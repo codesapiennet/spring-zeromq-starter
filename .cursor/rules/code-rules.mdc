@@ -1,0 +1,20 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+| #   | Rule                         | Details                                                                                                                                       |
+| --- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Package Structure**        | Follow the `com.example.zeromq` base package. Sub‑packages: `core`, `autoconfig`, `annotation`, `compute`, `exception`.                       |
+| 2   | **Class Naming**             | Use `PascalCase` for classes, `camelCase` for methods/fields. Append `Exception` for custom exceptions, `Config` for configuration classes.   |
+| 3   | **Method Visibility**        | Public API methods must be `public`. Helper methods should be `private` or package‑private.                                                   |
+| 4   | **Immutability**             | Prefer immutable data objects (final fields, no setters) for vector types.                                                                    |
+| 5   | **Error Handling**           | Throw custom exceptions (`ZeroMQException`, `SerializationException`, `SecurityException`). Do not swallow checked exceptions.                |
+| 6   | **Resource Management**      | Close ZMQ sockets and contexts in `@PreDestroy` methods or try‑with‑resources where applicable.                                               |
+| 7   | **Annotation Processing**    | All custom annotations reside in `com.example.zeromq.annotation`. Register processors via `AnnotationConfiguration`.                          |
+| 8   | **Configuration Properties** | Bind properties to `ZeroMqProperties` using `@ConfigurationProperties(prefix = "zeromq")`.                                                    |
+| 9   | **Logging Practices**        | Log start/end of socket creation, key generation, and message send/receive. Use placeholders (`log.info("Sending {} bytes", size)`).          |
+| 10  | **Testing Conventions**      | Use JUnit 5 (`@Test`, `@Nested`). Name test classes `<ClassName>Test`. Place them under `src/test/java` mirroring the main package hierarchy. |
+
+---

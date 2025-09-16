@@ -1,0 +1,22 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Project Rules
+
+| # | Rule | Description |
+|---|------|-------------|
+| 1 | **Code Style** | Apply Google Java Format. `./mvnw spotless:apply` must succeed. |
+| 2 | **Testing** | Every public class needs unit tests with ≥ 80 % coverage. |
+| 3 | **No External Broker** | Messaging must rely solely on JeroMQ; do not add RabbitMQ, Kafka, etc. |
+| 4 | **Security First** | CURVE keys must be generated via `ZAuthKeyGenerator`. Plain auth only for dev profiles. |
+| 5 | **Documentation** | Every public API gets a Javadoc block and an entry in `api-reference.adoc`. |
+| 6 | **Continuous Integration** | All PRs must pass the GitHub Actions workflow `ci.yml`. |
+| 7 | **Versioning** | Follow Semantic Versioning. Release branches are `release/x.y`. |
+| 8 | **Dependency Management** | All third‑party libraries are declared in the parent `pom.xml`. No version overrides in modules. |
+| 9 | **Logging** | Use `org.slf4j.LoggerFactory`. Log at INFO for lifecycle events, DEBUG for payloads. |
+|10 | **Compatibility** | Java 21+ only. Avoid deprecated Spring APIs. |
+
+---
+

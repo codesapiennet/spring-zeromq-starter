@@ -1,0 +1,21 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+| # | Rule | Rationale |
+|---|------|-----------|
+| 1 | **Zero‑Broker Architecture** | All messaging must be broker‑less to preserve ZeroMQ’s low‑latency, peer‑to‑peer model. |
+| 2 | **End‑to‑End Encryption** | Every production‑grade deployment must enable CURVE encryption; plain authentication is allowed only in `dev` profile. |
+| 3 | **Vector‑First Data Model** | Core services should exchange data as `Vector` objects (dense, sparse, named, batch) to enable efficient serialization and downstream ML pipelines. |
+| 4 | **Stateless Workers** | Compute workers (CPU/GPU) must be stateless; any state should be externalized (e.g., Redis, DB) to allow horizontal scaling. |
+| 5 | **Idempotent Messaging** | Publishers should set a unique message ID header; subscribers must treat duplicate IDs as already processed to guarantee at‑least‑once delivery semantics. |
+| 6 | **Back‑Pressure Handling** | Use ZMQ’s built‑in high‑water‑mark (HWM) settings; producers must respect HWM and optionally block or drop messages based on configuration. |
+| 7 | **Observability** | Every socket operation must emit metrics (`messagesSent`, `messagesReceived`, `latencyMs`) via Micrometer for Prometheus scraping. |
+| 8 | **Graceful Shutdown** | On `SIGTERM`, close all sockets, flush pending messages, and shut down the ZContext within 30 seconds to avoid message loss. |
+| 9 | **Versioned APIs** | Topic names should include a version prefix (e.g., `v1.orders`) to allow backward‑compatible evolution of message schemas. |
+|10 | **Compliance Logging** | Security‑sensitive actions (key generation, CURVE handshake) must be logged at INFO with a correlation ID but must never log private keys or passphrases. |
+
+---
+
+
