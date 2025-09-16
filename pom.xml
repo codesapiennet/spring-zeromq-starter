@@ -26,12 +26,6 @@
         <module>zeromq-core</module>
         <module>zeromq-autoconfigure</module>
         <module>zeromq-annotations</module>
-        <module>zeromq-compute</module>
-        <module>zeromq-spring-boot-starter</module>
-        <module>zeromq-examples</module>
-        <module>sample-app</module>
-        <module>zeromq-docs</module>
-        <module>benchmarks</module>
     </modules>
 
     <properties>
@@ -146,16 +140,7 @@
                 <artifactId>zeromq-annotations</artifactId>
                 <version>${project.version}</version>
             </dependency>
-            <dependency>
-                <groupId>com.example</groupId>
-                <artifactId>zeromq-compute</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.example</groupId>
-                <artifactId>zeromq-spring-boot-starter</artifactId>
-                <version>${project.version}</version>
-            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
