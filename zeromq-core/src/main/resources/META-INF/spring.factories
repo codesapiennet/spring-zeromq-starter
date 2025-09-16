@@ -1,0 +1,8 @@
+# Spring ZeroMQ Core Components
+# This file enables Spring Boot's auto-configuration mechanism to discover
+# the core ZeroMQ components automatically.
+
+# Auto Configuration Classes
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.example.zeromq.core.ZmqContextHolder,\
+com.example.zeromq.core.JacksonMessageConverter 
