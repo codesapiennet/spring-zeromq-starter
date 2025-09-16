@@ -1,0 +1,175 @@
+spring:
+  zeromq:
+    # Enable or disable ZeroMQ integration
+    enabled: true
+    
+    # Default endpoints for health checks and monitoring
+    endpoints: []
+    
+    # Security configuration
+    security:
+      # Security mechanism: NONE, PLAIN, CURVE
+      mechanism: NONE
+      # Security profile: dev, test, prod
+      profile: dev
+      
+      # CURVE encryption settings
+      curve:
+        # CURVE keys (Z85 encoded)
+        server-public-key: ""
+        server-secret-key: ""
+        client-public-key: ""
+        client-secret-key: ""
+        # Enable mutual authentication
+        mutual-auth: false
+      
+      # PLAIN authentication settings
+      plain:
+        username: ""
+        password: ""
+    
+    # Socket configuration
+    socket:
+      # Socket timeouts
+      linger-time: PT1S
+      connect-timeout: PT5S
+      receive-timeout: PT30S
+      send-timeout: PT30S
+      
+      # High water marks (message buffering limits)
+      send-high-water-mark: 1000
+      receive-high-water-mark: 1000
+      
+      # ZeroMQ context settings
+      io-threads: 1
+    
+    # Vector processing configuration
+    vector:
+      enabled: true
+      
+      # Compression settings
+      compression:
+        enabled: true
+        threshold: 1024  # Minimum size in bytes for compression
+      
+      # Memory management
+      memory:
+        max-dimensions: 100000
+        pool-size: 100
+    
+    # Monitoring and metrics
+    monitoring:
+      enabled: true
+      metrics-interval: PT30S
+      
+      # Health checks
+      health-check:
+        enabled: true
+        timeout: PT5S
+    
+    # Connection pooling
+    pool:
+      enabled: true
+      min-size: 1
+      max-size: 10
+      max-idle-time: PT5M
+      validation-timeout: PT1S
+
+---
+# Development profile - relaxed security, verbose logging
+spring:
+  config:
+    activate:
+      on-profile: dev
+  zeromq:
+    security:
+      mechanism: NONE
+      profile: dev
+    monitoring:
+      enabled: true
+
+# Logging for development
+logging:
+  level:
+    com.example.zeromq: DEBUG
+    org.zeromq: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+---
+# Testing profile - moderate security, structured logging
+spring:
+  config:
+    activate:
+      on-profile: test
+  zeromq:
+    security:
+      mechanism: PLAIN
+      profile: test
+      plain:
+        username: ${ZEROMQ_TEST_USER:testuser}
+        password: ${ZEROMQ_TEST_PASS:testpass}
+    pool:
+      max-size: 5
+
+# Structured logging for testing
+logging:
+  level:
+    com.example.zeromq: INFO
+    root: WARN
+  pattern:
+    console: "%d{ISO8601} [%thread] %-5level %logger{36} - %msg%n"
+
+---
+# Production profile - strict security, performance optimized
+spring:
+  config:
+    activate:
+      on-profile: prod
+  zeromq:
+    security:
+      mechanism: CURVE
+      profile: prod
+      curve:
+        server-public-key: ${ZEROMQ_SERVER_PUBLIC_KEY}
+        server-secret-key: ${ZEROMQ_SERVER_SECRET_KEY}
+        client-public-key: ${ZEROMQ_CLIENT_PUBLIC_KEY}
+        client-secret-key: ${ZEROMQ_CLIENT_SECRET_KEY}
+        mutual-auth: true
+    
+    socket:
+      io-threads: ${ZEROMQ_IO_THREADS:4}
+      send-high-water-mark: 10000
+      receive-high-water-mark: 10000
+    
+    pool:
+      min-size: ${ZEROMQ_POOL_MIN:2}
+      max-size: ${ZEROMQ_POOL_MAX:50}
+      max-idle-time: PT2M
+    
+    vector:
+      memory:
+        max-dimensions: 1000000
+        pool-size: 500
+
+# Production logging - JSON format, minimal levels
+logging:
+  level:
+    com.example.zeromq: INFO
+    root: WARN
+  pattern:
+    console: '{"timestamp":"%d{ISO8601}","level":"%-5level","thread":"%thread","logger":"%logger{36}","message":"%msg","correlation_id":"%X{correlationId:-}"}%n'
+
+# Actuator endpoints for production monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    tags:
+      application: ${spring.application.name:zeromq-app}
+      environment: ${spring.profiles.active:default} 

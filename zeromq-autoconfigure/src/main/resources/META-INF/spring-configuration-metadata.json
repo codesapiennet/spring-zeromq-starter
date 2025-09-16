@@ -1,0 +1,282 @@
+{
+  "groups": [
+    {
+      "name": "spring.zeromq",
+      "type": "com.example.zeromq.autoconfig.ZeroMqProperties",
+      "description": "ZeroMQ messaging configuration properties."
+    },
+    {
+      "name": "spring.zeromq.security",
+      "type": "com.example.zeromq.autoconfig.ZeroMqProperties$Security",
+      "sourceType": "com.example.zeromq.autoconfig.ZeroMqProperties",
+      "description": "Security configuration for ZeroMQ messaging."
+    },
+    {
+      "name": "spring.zeromq.security.curve",
+      "type": "com.example.zeromq.autoconfig.ZeroMqProperties$Security$Curve",
+      "sourceType": "com.example.zeromq.autoconfig.ZeroMqProperties$Security",
+      "description": "CURVE encryption configuration."
+    },
+    {
+      "name": "spring.zeromq.security.plain",
+      "type": "com.example.zeromq.autoconfig.ZeroMqProperties$Security$Plain",
+      "sourceType": "com.example.zeromq.autoconfig.ZeroMqProperties$Security",
+      "description": "PLAIN authentication configuration."
+    },
+    {
+      "name": "spring.zeromq.socket",
+      "type": "com.example.zeromq.autoconfig.ZeroMqProperties$Socket",
+      "sourceType": "com.example.zeromq.autoconfig.ZeroMqProperties",
+      "description": "Socket configuration options."
+    },
+    {
+      "name": "spring.zeromq.vector",
+      "type": "com.example.zeromq.autoconfig.ZeroMqProperties$Vector",
+      "sourceType": "com.example.zeromq.autoconfig.ZeroMqProperties",
+      "description": "Vector processing configuration."
+    },
+    {
+      "name": "spring.zeromq.monitoring",
+      "type": "com.example.zeromq.autoconfig.ZeroMqProperties$Monitoring",
+      "sourceType": "com.example.zeromq.autoconfig.ZeroMqProperties",
+      "description": "Monitoring and metrics configuration."
+    },
+    {
+      "name": "spring.zeromq.pool",
+      "type": "com.example.zeromq.autoconfig.ZeroMqProperties$Pool",
+      "sourceType": "com.example.zeromq.autoconfig.ZeroMqProperties",
+      "description": "Connection pool configuration."
+    }
+  ],
+  "properties": [
+    {
+      "name": "spring.zeromq.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable ZeroMQ integration.",
+      "defaultValue": true
+    },
+    {
+      "name": "spring.zeromq.endpoints",
+      "type": "java.util.List<java.lang.String>",
+      "description": "Default endpoints for health checks and monitoring."
+    },
+    {
+      "name": "spring.zeromq.security.mechanism",
+      "type": "com.example.zeromq.autoconfig.ZeroMqProperties$Security$Mechanism",
+      "description": "Security mechanism to use (NONE, PLAIN, CURVE).",
+      "defaultValue": "NONE"
+    },
+    {
+      "name": "spring.zeromq.security.profile",
+      "type": "java.lang.String",
+      "description": "Security profile (dev, test, prod).",
+      "defaultValue": "dev"
+    },
+    {
+      "name": "spring.zeromq.security.curve.server-public-key",
+      "type": "java.lang.String",
+      "description": "Server public key for CURVE encryption (Z85 encoded)."
+    },
+    {
+      "name": "spring.zeromq.security.curve.server-secret-key",
+      "type": "java.lang.String",
+      "description": "Server secret key for CURVE encryption (Z85 encoded)."
+    },
+    {
+      "name": "spring.zeromq.security.curve.client-public-key",
+      "type": "java.lang.String",
+      "description": "Client public key for CURVE encryption (Z85 encoded)."
+    },
+    {
+      "name": "spring.zeromq.security.curve.client-secret-key",
+      "type": "java.lang.String",
+      "description": "Client secret key for CURVE encryption (Z85 encoded)."
+    },
+    {
+      "name": "spring.zeromq.security.curve.mutual-auth",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable mutual authentication for CURVE.",
+      "defaultValue": false
+    },
+    {
+      "name": "spring.zeromq.security.plain.username",
+      "type": "java.lang.String",
+      "description": "Username for PLAIN authentication."
+    },
+    {
+      "name": "spring.zeromq.security.plain.password",
+      "type": "java.lang.String",
+      "description": "Password for PLAIN authentication."
+    },
+    {
+      "name": "spring.zeromq.socket.linger-time",
+      "type": "java.time.Duration",
+      "description": "Socket linger time on close.",
+      "defaultValue": "PT1S"
+    },
+    {
+      "name": "spring.zeromq.socket.connect-timeout",
+      "type": "java.time.Duration",
+      "description": "Socket connection timeout.",
+      "defaultValue": "PT5S"
+    },
+    {
+      "name": "spring.zeromq.socket.receive-timeout",
+      "type": "java.time.Duration",
+      "description": "Socket receive timeout.",
+      "defaultValue": "PT30S"
+    },
+    {
+      "name": "spring.zeromq.socket.send-timeout",
+      "type": "java.time.Duration",
+      "description": "Socket send timeout.",
+      "defaultValue": "PT30S"
+    },
+    {
+      "name": "spring.zeromq.socket.send-high-water-mark",
+      "type": "java.lang.Integer",
+      "description": "High water mark for sending messages.",
+      "defaultValue": 1000
+    },
+    {
+      "name": "spring.zeromq.socket.receive-high-water-mark",
+      "type": "java.lang.Integer",
+      "description": "High water mark for receiving messages.",
+      "defaultValue": 1000
+    },
+    {
+      "name": "spring.zeromq.socket.io-threads",
+      "type": "java.lang.Integer",
+      "description": "Number of I/O threads for ZeroMQ context.",
+      "defaultValue": 1
+    },
+    {
+      "name": "spring.zeromq.vector.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable vector processing.",
+      "defaultValue": true
+    },
+    {
+      "name": "spring.zeromq.vector.compression.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable vector compression.",
+      "defaultValue": true
+    },
+    {
+      "name": "spring.zeromq.vector.compression.threshold",
+      "type": "java.lang.Integer",
+      "description": "Minimum vector size for compression (bytes).",
+      "defaultValue": 1024
+    },
+    {
+      "name": "spring.zeromq.vector.memory.max-dimensions",
+      "type": "java.lang.Integer",
+      "description": "Maximum vector dimensions.",
+      "defaultValue": 100000
+    },
+    {
+      "name": "spring.zeromq.vector.memory.pool-size",
+      "type": "java.lang.Integer",
+      "description": "Vector memory pool size.",
+      "defaultValue": 100
+    },
+    {
+      "name": "spring.zeromq.monitoring.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable monitoring and metrics.",
+      "defaultValue": true
+    },
+    {
+      "name": "spring.zeromq.monitoring.metrics-interval",
+      "type": "java.time.Duration",
+      "description": "Metrics collection interval.",
+      "defaultValue": "PT30S"
+    },
+    {
+      "name": "spring.zeromq.monitoring.health-check.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable health checks.",
+      "defaultValue": true
+    },
+    {
+      "name": "spring.zeromq.monitoring.health-check.timeout",
+      "type": "java.time.Duration",
+      "description": "Health check timeout.",
+      "defaultValue": "PT5S"
+    },
+    {
+      "name": "spring.zeromq.pool.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable connection pooling.",
+      "defaultValue": true
+    },
+    {
+      "name": "spring.zeromq.pool.min-size",
+      "type": "java.lang.Integer",
+      "description": "Minimum pool size.",
+      "defaultValue": 1
+    },
+    {
+      "name": "spring.zeromq.pool.max-size",
+      "type": "java.lang.Integer",
+      "description": "Maximum pool size.",
+      "defaultValue": 10
+    },
+    {
+      "name": "spring.zeromq.pool.max-idle-time",
+      "type": "java.time.Duration",
+      "description": "Maximum idle time for pooled connections.",
+      "defaultValue": "PT5M"
+    },
+    {
+      "name": "spring.zeromq.pool.validation-timeout",
+      "type": "java.time.Duration",
+      "description": "Connection validation timeout.",
+      "defaultValue": "PT1S"
+    }
+  ],
+  "hints": [
+    {
+      "name": "spring.zeromq.security.mechanism",
+      "values": [
+        {
+          "value": "NONE",
+          "description": "No security (plain text communication)."
+        },
+        {
+          "value": "PLAIN",
+          "description": "PLAIN authentication (username/password)."
+        },
+        {
+          "value": "CURVE",
+          "description": "CURVE encryption (public key cryptography)."
+        }
+      ]
+    },
+    {
+      "name": "spring.zeromq.security.profile",
+      "values": [
+        {
+          "value": "dev",
+          "description": "Development profile with relaxed security."
+        },
+        {
+          "value": "test",
+          "description": "Testing profile with moderate security."
+        },
+        {
+          "value": "prod",
+          "description": "Production profile with strict security."
+        }
+      ]
+    },
+    {
+      "name": "spring.zeromq.endpoints",
+      "providers": [
+        {
+          "name": "any"
+        }
+      ]
+    }
+  ]
+} 
