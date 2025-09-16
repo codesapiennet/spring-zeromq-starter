@@ -124,13 +124,6 @@
                 <version>${micrometer.version}</version>
             </dependency>
 
-            <!-- Spring Boot Actuator -->
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter-actuator</artifactId>
-                <version>${spring.boot.version}</version>
-            </dependency>
-
             <!-- Project Modules -->
             <dependency>
                 <groupId>com.example</groupId>

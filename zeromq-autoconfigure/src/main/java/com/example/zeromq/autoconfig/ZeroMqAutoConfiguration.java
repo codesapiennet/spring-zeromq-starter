@@ -183,6 +183,92 @@ public class ZeroMqAutoConfiguration {
     }
 
     /**
+     * Health indicator for ZeroMQ components (requires Actuator).
+     * Uses reflection to avoid compile-time dependency on actuator classes.
+     * 
+     * @param contextHolder the ZMQ context holder
+     * @param properties configuration properties
+     * @return HealthIndicator bean or null if actuator not available
+     */
+    @Bean(name = "zeroMqHealthIndicator")
+    @ConditionalOnClass(name = "org.springframework.boot.actuator.health.HealthIndicator")
+    @ConditionalOnMissingBean(name = "zeroMqHealthIndicator")
+    @ConditionalOnProperty(prefix = "spring.zeromq.monitoring.health-check", name = "enabled", havingValue = "true", matchIfMissing = true)
+    public Object zeroMqHealthIndicator(ZmqContextHolder contextHolder, ZeroMqProperties properties) {
+        try {
+            log.debug("Creating ZeroMQ health indicator using reflection");
+            
+            // Load actuator classes via reflection
+            Class<?> healthIndicatorClass = Class.forName("org.springframework.boot.actuator.health.HealthIndicator");
+            Class<?> abstractHealthIndicatorClass = Class.forName("org.springframework.boot.actuator.health.AbstractHealthIndicator");
+            
+            // Create a simple health indicator implementation
+            return java.lang.reflect.Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class<?>[]{ healthIndicatorClass },
+                (proxy, method, args) -> {
+                    if ("health".equals(method.getName())) {
+                        return createHealthStatus(contextHolder, properties);
+                    }
+                    return null;
+                }
+            );
+            
+        } catch (Exception e) {
+            log.warn("Failed to create ZeroMQ health indicator: {}", e.getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * Create health status using reflection to avoid compile-time dependencies.
+     */
+    private Object createHealthStatus(ZmqContextHolder contextHolder, ZeroMqProperties properties) {
+        try {
+            Class<?> healthClass = Class.forName("org.springframework.boot.actuator.health.Health");
+            Class<?> builderClass = Class.forName("org.springframework.boot.actuator.health.Health$Builder");
+            Class<?> statusClass = Class.forName("org.springframework.boot.actuator.health.Status");
+            
+            // Get UP status
+            Object upStatus = statusClass.getField("UP").get(null);
+            
+            // Create Health.Builder
+            Object builder = healthClass.getMethod("up").invoke(null);
+            
+            // Add basic ZeroMQ health information
+            builder = builderClass.getMethod("withDetail", String.class, Object.class)
+                    .invoke(builder, "zeromq.enabled", properties.isEnabled());
+            
+            if (contextHolder.isAvailable()) {
+                builder = builderClass.getMethod("withDetail", String.class, Object.class)
+                        .invoke(builder, "context.available", true);
+                builder = builderClass.getMethod("withDetail", String.class, Object.class)
+                        .invoke(builder, "context.closed", contextHolder.getContext().isClosed());
+                builder = builderClass.getMethod("withDetail", String.class, Object.class)
+                        .invoke(builder, "active.sockets", contextHolder.getContext().getSockets().size());
+            } else {
+                builder = builderClass.getMethod("status", statusClass)
+                        .invoke(builder, statusClass.getField("DOWN").get(null));
+                builder = builderClass.getMethod("withDetail", String.class, Object.class)
+                        .invoke(builder, "context.available", false);
+            }
+            
+            // Build and return health
+            return builderClass.getMethod("build").invoke(builder);
+            
+        } catch (Exception e) {
+            log.debug("Error creating health status: {}", e.getMessage());
+            // Return a simple UP status as fallback
+            try {
+                Class<?> healthClass = Class.forName("org.springframework.boot.actuator.health.Health");
+                return healthClass.getMethod("up").invoke(null);
+            } catch (Exception ex) {
+                return null;
+            }
+        }
+    }
+
+    /**
      * Configuration for development profile with relaxed security.
      */
     @Bean
