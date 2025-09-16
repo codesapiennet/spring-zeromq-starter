@@ -130,22 +130,7 @@ public class ZeroMqAutoConfiguration {
         return new ZeroMqSecurityHelper(properties);
     }
 
-    /**
-     * Health indicator for ZeroMQ components (requires Actuator).
-     * 
-     * @param contextHolder the ZMQ context holder
-     * @param properties configuration properties
-     * @return ZeroMqHealthIndicator bean
-     */
-    @Bean
-    @ConditionalOnClass(name = "org.springframework.boot.actuator.health.HealthIndicator")
-    @ConditionalOnMissingBean
-    @ConditionalOnProperty(prefix = "spring.zeromq.monitoring.health-check", name = "enabled", havingValue = "true", matchIfMissing = true)
-    public ZeroMqHealthIndicator zeroMqHealthIndicator(ZmqContextHolder contextHolder,
-                                                      ZeroMqProperties properties) {
-        log.debug("Creating ZeroMQ health indicator");
-        return new ZeroMqHealthIndicator(contextHolder, properties);
-    }
+
 
     /**
      * Metrics collector for ZeroMQ operations (requires Micrometer).

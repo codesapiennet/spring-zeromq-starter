@@ -33,6 +33,13 @@ public class ZmqSecurityConfig {
     private final ConcurrentHashMap<String, Long> securityMetrics = new ConcurrentHashMap<>();
 
     /**
+     * Create a new ZmqSecurityConfig with default settings.
+     */
+    public ZmqSecurityConfig() {
+        log.debug("Initializing ZeroMQ security configuration");
+    }
+
+    /**
      * Security mechanisms supported by the framework.
      */
     public enum SecurityMechanism {
@@ -72,13 +79,22 @@ public class ZmqSecurityConfig {
             }
         }
 
-        /** @return the username for authentication */
+        /**
+         * Get the username for authentication.
+         * @return the username for authentication
+         */
         public String getUsername() { return username; }
         
-        /** @return the password for authentication */
+        /**
+         * Get the password for authentication.
+         * @return the password for authentication
+         */
         public String getPassword() { return password; }
         
-        /** @return true if this is server configuration */
+        /**
+         * Check if this is server configuration.
+         * @return true if this is server configuration
+         */
         public boolean isServer() { return server; }
 
         @Override
@@ -159,22 +175,40 @@ public class ZmqSecurityConfig {
             }
         }
 
-        /** @return the server's public key in Z85 format */
+        /**
+         * Get the server's public key.
+         * @return the server's public key in Z85 format
+         */
         public String getServerPublicKey() { return serverPublicKey; }
         
-        /** @return the server's secret key in Z85 format */
+        /**
+         * Get the server's secret key.
+         * @return the server's secret key in Z85 format
+         */
         public String getServerSecretKey() { return serverSecretKey; }
         
-        /** @return the client's public key in Z85 format */
+        /**
+         * Get the client's public key.
+         * @return the client's public key in Z85 format
+         */
         public String getClientPublicKey() { return clientPublicKey; }
         
-        /** @return the client's secret key in Z85 format */
+        /**
+         * Get the client's secret key.
+         * @return the client's secret key in Z85 format
+         */
         public String getClientSecretKey() { return clientSecretKey; }
         
-        /** @return true if this configuration is for server mode */
+        /**
+         * Check if this configuration is for server mode.
+         * @return true if this configuration is for server mode
+         */
         public boolean isServer() { return server; }
         
-        /** @return true if mutual authentication is enabled */
+        /**
+         * Check if mutual authentication is enabled.
+         * @return true if mutual authentication is enabled
+         */
         public boolean isMutualAuth() { return mutualAuth; }
 
         private void validateCurveKey(String keyName, String key) {
