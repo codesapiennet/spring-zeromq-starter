@@ -32,6 +32,13 @@ public class ZmqContextHolder {
     private static final Logger log = LoggerFactory.getLogger(ZmqContextHolder.class);
     
     /**
+     * Create a new ZmqContextHolder with default configuration.
+     */
+    public ZmqContextHolder() {
+        // Default constructor
+    }
+    
+    /**
      * Default shutdown timeout in milliseconds (30 seconds).
      * This matches the workspace rule requirement for graceful shutdown.
      */

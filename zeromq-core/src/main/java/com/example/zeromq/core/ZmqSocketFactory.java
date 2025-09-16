@@ -281,6 +281,10 @@ public class ZmqSocketFactory {
 
     /**
      * Create a PUB socket with the specified security configuration.
+     * 
+     * @param curveConfig the CURVE security configuration
+     * @param correlationId correlation ID for logging and metrics
+     * @return configured PUB socket
      */
     public ZMQ.Socket createPublisher(ZmqSecurityConfig.CurveConfig curveConfig, String correlationId) {
         return createSocket(ZMQ.PUB, curveConfig, correlationId);
@@ -288,6 +292,10 @@ public class ZmqSocketFactory {
 
     /**
      * Create a SUB socket with the specified security configuration.
+     * 
+     * @param curveConfig the CURVE security configuration
+     * @param correlationId correlation ID for logging and metrics
+     * @return configured SUB socket
      */
     public ZMQ.Socket createSubscriber(ZmqSecurityConfig.CurveConfig curveConfig, String correlationId) {
         return createSocket(ZMQ.SUB, curveConfig, correlationId);
@@ -295,6 +303,10 @@ public class ZmqSocketFactory {
 
     /**
      * Create a REQ socket with the specified security configuration.
+     * 
+     * @param curveConfig the CURVE security configuration
+     * @param correlationId correlation ID for logging and metrics
+     * @return configured REQ socket
      */
     public ZMQ.Socket createRequester(ZmqSecurityConfig.CurveConfig curveConfig, String correlationId) {
         return createSocket(ZMQ.REQ, curveConfig, correlationId);
@@ -302,6 +314,10 @@ public class ZmqSocketFactory {
 
     /**
      * Create a REP socket with the specified security configuration.
+     * 
+     * @param curveConfig the CURVE security configuration
+     * @param correlationId correlation ID for logging and metrics
+     * @return configured REP socket
      */
     public ZMQ.Socket createReplier(ZmqSecurityConfig.CurveConfig curveConfig, String correlationId) {
         return createSocket(ZMQ.REP, curveConfig, correlationId);
@@ -309,6 +325,10 @@ public class ZmqSocketFactory {
 
     /**
      * Create a PUSH socket with the specified security configuration.
+     * 
+     * @param curveConfig the CURVE security configuration
+     * @param correlationId correlation ID for logging and metrics
+     * @return configured PUSH socket
      */
     public ZMQ.Socket createPusher(ZmqSecurityConfig.CurveConfig curveConfig, String correlationId) {
         return createSocket(ZMQ.PUSH, curveConfig, correlationId);
@@ -316,6 +336,10 @@ public class ZmqSocketFactory {
 
     /**
      * Create a PULL socket with the specified security configuration.
+     * 
+     * @param curveConfig the CURVE security configuration
+     * @param correlationId correlation ID for logging and metrics
+     * @return configured PULL socket
      */
     public ZMQ.Socket createPuller(ZmqSecurityConfig.CurveConfig curveConfig, String correlationId) {
         return createSocket(ZMQ.PULL, curveConfig, correlationId);
@@ -323,6 +347,10 @@ public class ZmqSocketFactory {
 
     /**
      * Create a DEALER socket with the specified security configuration.
+     * 
+     * @param curveConfig the CURVE security configuration
+     * @param correlationId correlation ID for logging and metrics
+     * @return configured DEALER socket
      */
     public ZMQ.Socket createDealer(ZmqSecurityConfig.CurveConfig curveConfig, String correlationId) {
         return createSocket(ZMQ.DEALER, curveConfig, correlationId);
@@ -330,6 +358,10 @@ public class ZmqSocketFactory {
 
     /**
      * Create a ROUTER socket with the specified security configuration.
+     * 
+     * @param curveConfig the CURVE security configuration
+     * @param correlationId correlation ID for logging and metrics
+     * @return configured ROUTER socket
      */
     public ZMQ.Socket createRouter(ZmqSecurityConfig.CurveConfig curveConfig, String correlationId) {
         return createSocket(ZMQ.ROUTER, curveConfig, correlationId);

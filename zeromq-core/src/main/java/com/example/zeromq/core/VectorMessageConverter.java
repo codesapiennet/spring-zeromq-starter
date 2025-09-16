@@ -34,6 +34,13 @@ public class VectorMessageConverter implements MessageConverter {
 
     private static final Logger log = LoggerFactory.getLogger(VectorMessageConverter.class);
     
+    /**
+     * Create a new VectorMessageConverter with default configuration.
+     */
+    public VectorMessageConverter() {
+        // Default constructor
+    }
+    
     // Binary format constants
     private static final byte[] VECTOR_MAGIC = {'Z', 'V', 'E', 'C'}; // "ZVEC"
     private static final byte FORMAT_VERSION = 0x01;

@@ -36,8 +36,11 @@ public class ZmqSecurityConfig {
      * Security mechanisms supported by the framework.
      */
     public enum SecurityMechanism {
+        /** No security mechanism - plain text communication */
         NONE,
+        /** PLAIN authentication with username/password */
         PLAIN,
+        /** CURVE encryption with public/private key pairs */
         CURVE
     }
 
@@ -49,6 +52,13 @@ public class ZmqSecurityConfig {
         private final String password;
         private final boolean server;
 
+        /**
+         * Create a PLAIN authentication configuration.
+         * 
+         * @param username the username for authentication
+         * @param password the password for authentication  
+         * @param server true if this is server configuration, false for client
+         */
         public PlainConfig(String username, String password, boolean server) {
             this.username = Objects.requireNonNull(username, "Username must not be null");
             this.password = Objects.requireNonNull(password, "Password must not be null");
@@ -62,8 +72,13 @@ public class ZmqSecurityConfig {
             }
         }
 
+        /** @return the username for authentication */
         public String getUsername() { return username; }
+        
+        /** @return the password for authentication */
         public String getPassword() { return password; }
+        
+        /** @return true if this is server configuration */
         public boolean isServer() { return server; }
 
         @Override
@@ -85,6 +100,10 @@ public class ZmqSecurityConfig {
 
         /**
          * Create a server CURVE configuration.
+         * 
+         * @param serverPublicKey the server's public key in Z85 format
+         * @param serverSecretKey the server's secret key in Z85 format
+         * @return configured CurveConfig for server mode
          */
         public static CurveConfig forServer(String serverPublicKey, String serverSecretKey) {
             return new CurveConfig(serverPublicKey, serverSecretKey, null, null, true);
@@ -92,6 +111,11 @@ public class ZmqSecurityConfig {
 
         /**
          * Create a client CURVE configuration.
+         * 
+         * @param serverPublicKey the server's public key in Z85 format
+         * @param clientPublicKey the client's public key in Z85 format
+         * @param clientSecretKey the client's secret key in Z85 format
+         * @return configured CurveConfig for client mode
          */
         public static CurveConfig forClient(String serverPublicKey, String clientPublicKey, String clientSecretKey) {
             return new CurveConfig(serverPublicKey, null, clientPublicKey, clientSecretKey, false);
@@ -99,6 +123,13 @@ public class ZmqSecurityConfig {
 
         /**
          * Create a mutual authentication CURVE configuration.
+         * 
+         * @param serverPublicKey the server's public key in Z85 format
+         * @param serverSecretKey the server's secret key in Z85 format
+         * @param clientPublicKey the client's public key in Z85 format
+         * @param clientSecretKey the client's secret key in Z85 format
+         * @param isServer true if this configuration is for server mode, false for client mode
+         * @return configured CurveConfig with mutual authentication
          */
         public static CurveConfig forMutualAuth(String serverPublicKey, String serverSecretKey,
                                                String clientPublicKey, String clientSecretKey, 
@@ -128,11 +159,22 @@ public class ZmqSecurityConfig {
             }
         }
 
+        /** @return the server's public key in Z85 format */
         public String getServerPublicKey() { return serverPublicKey; }
+        
+        /** @return the server's secret key in Z85 format */
         public String getServerSecretKey() { return serverSecretKey; }
+        
+        /** @return the client's public key in Z85 format */
         public String getClientPublicKey() { return clientPublicKey; }
+        
+        /** @return the client's secret key in Z85 format */
         public String getClientSecretKey() { return clientSecretKey; }
+        
+        /** @return true if this configuration is for server mode */
         public boolean isServer() { return server; }
+        
+        /** @return true if mutual authentication is enabled */
         public boolean isMutualAuth() { return mutualAuth; }
 
         private void validateCurveKey(String keyName, String key) {
