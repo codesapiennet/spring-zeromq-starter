@@ -4,7 +4,6 @@ import com.example.zeromq.core.exception.SecurityException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.ZMQ;
-import zmq.Curve25519;
 
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -160,18 +159,10 @@ public final class ZAuthKeyGenerator {
         try {
             long startTime = System.nanoTime();
             
-            // Generate random seed for key generation
-            byte[] seed = new byte[KEY_SIZE];
-            SECURE_RANDOM.nextBytes(seed);
-            
-            // Generate Curve25519 key pair
-            byte[][] keyPair = Curve25519.generateKeyPair(seed);
-            byte[] publicKeyBytes = keyPair[0];
-            byte[] secretKeyBytes = keyPair[1];
-            
-            // Encode keys in Z85 format
-            String publicKey = ZMQ.Curve.z85Encode(publicKeyBytes);
-            String secretKey = ZMQ.Curve.z85Encode(secretKeyBytes);
+            // Generate CURVE key pair using JeroMQ API (already Z85 encoded)
+            String[] keyPair = ZMQ.Curve.generateKeyPair();
+            String publicKey = keyPair[0];
+            String secretKey = keyPair[1];
             
             long duration = System.nanoTime() - startTime;
             
@@ -273,14 +264,8 @@ public final class ZAuthKeyGenerator {
         }
         
         try {
-            // Decode the secret key
-            byte[] secretKeyBytes = ZMQ.Curve.z85Decode(secretKey);
-            
-            // Compute the public key
-            byte[] publicKeyBytes = Curve25519.publicKey(secretKeyBytes);
-            
-            // Encode and return the public key
-            String publicKey = ZMQ.Curve.z85Encode(publicKeyBytes);
+            // Use JeroMQ's curve key derivation
+            String publicKey = ZMQ.Curve.publicKey(secretKey);
             
             log.debug("component=zeromq-security event=public-key-computed " +
                      "publicKey={}", publicKey);

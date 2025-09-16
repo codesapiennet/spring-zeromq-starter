@@ -35,6 +35,13 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Spring Boot for conditional annotations -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Validation API -->
         <dependency>
             <groupId>jakarta.validation</groupId>

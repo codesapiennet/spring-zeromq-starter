@@ -317,7 +317,7 @@ public final class NamedVector implements Vector {
             .boxed()
             .sorted((i, j) -> Float.compare(vector.get(j), vector.get(i))) // Descending order
             .limit(count)
-            .collect(Collectors.toLinkedHashMap(
+            .collect(Collectors.toMap(
                 i -> featureNames[i],
                 i -> vector.get(i),
                 (e1, e2) -> e1,
@@ -337,7 +337,7 @@ public final class NamedVector implements Vector {
         return IntStream.range(0, featureNames.length)
             .filter(i -> filter.test(featureNames[i], vector.get(i)))
             .boxed()
-            .collect(Collectors.toLinkedHashMap(
+            .collect(Collectors.toMap(
                 i -> featureNames[i],
                 i -> vector.get(i),
                 (e1, e2) -> e1,
@@ -425,9 +425,11 @@ public final class NamedVector implements Vector {
         if (featureNames.length <= 5) {
             Map<String, Float> features = IntStream.range(0, featureNames.length)
                 .boxed()
-                .collect(Collectors.toLinkedHashMap(
+                .collect(Collectors.toMap(
                     i -> featureNames[i],
-                    i -> vector.get(i)
+                    i -> vector.get(i),
+                    (e1, e2) -> e1,
+                    LinkedHashMap::new
                 ));
             return "NamedVector" + features;
         } else {

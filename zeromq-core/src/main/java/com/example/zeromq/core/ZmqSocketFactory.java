@@ -97,7 +97,7 @@ public class ZmqSocketFactory {
      * @throws ZeroMQException if socket creation fails
      */
     public ZMQ.Socket createSocket(int socketType, String correlationId) {
-        return createSocket(socketType, null, correlationId);
+        return createSocket(socketType, (ZmqSecurityConfig.PlainConfig) null, correlationId);
     }
 
     /**
@@ -217,27 +217,27 @@ public class ZmqSocketFactory {
             // Socket-specific optimizations
             switch (socketType) {
                 case ZMQ.PUB:
-                    socket.setSendHighWaterMark(10000);  // Back-pressure handling
+                    socket.setSndHWM(10000);  // Back-pressure handling
                     break;
                 case ZMQ.SUB:
-                    socket.setReceiveHighWaterMark(10000);  // Back-pressure handling
+                    socket.setRcvHWM(10000);  // Back-pressure handling
                     break;
                 case ZMQ.PUSH:
-                    socket.setSendHighWaterMark(10000);
+                    socket.setSndHWM(10000);
                     break;
                 case ZMQ.PULL:
-                    socket.setReceiveHighWaterMark(10000);
+                    socket.setRcvHWM(10000);
                     break;
                 case ZMQ.REQ:
-                    socket.setRequestTimeout(30000);  // 30 second request timeout
+                    // REQ sockets use default timeout settings
                     break;
                 case ZMQ.REP:
                     // REP sockets don't need special configuration
                     break;
                 case ZMQ.DEALER:
                 case ZMQ.ROUTER:
-                    socket.setSendHighWaterMark(10000);
-                    socket.setReceiveHighWaterMark(10000);
+                    socket.setSndHWM(10000);
+                    socket.setRcvHWM(10000);
                     break;
             }
             
@@ -265,12 +265,11 @@ public class ZmqSocketFactory {
         
         // Micrometer metrics
         if (socketCreatedCounter != null) {
-            socketCreatedCounter.increment(
-                io.micrometer.core.instrument.Tags.of(
-                    "socket.type", getSocketTypeName(socketType),
-                    "security.type", securityType
-                )
-            );
+            Counter.builder("zeromq.socket.created")
+                .tags("socket.type", getSocketTypeName(socketType),
+                      "security.type", securityType)
+                .register(meterRegistry)
+                .increment();
         }
         
         if (socketCreationTimer != null) {

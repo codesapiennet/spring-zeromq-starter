@@ -257,8 +257,8 @@ public class ZmqSecurityConfig {
         socket.setCurveServer(true);
         
         // Set server keys
-        socket.setCurvePublicKey(config.getServerPublicKey());
-        socket.setCurveSecretKey(config.getServerSecretKey());
+        socket.setCurvePublicKey(config.getServerPublicKey().getBytes());
+        socket.setCurveSecretKey(config.getServerSecretKey().getBytes());
         
         log.info("component=zeromq-security event=curve-server-configured " +
                 "correlationId={} operationId={} serverPublicKey={}", 
@@ -280,11 +280,11 @@ public class ZmqSecurityConfig {
     private void configureClientCurve(ZMQ.Socket socket, CurveConfig config, 
                                      String correlationId, long operationId) {
         // Set client keys
-        socket.setCurvePublicKey(config.getClientPublicKey());
-        socket.setCurveSecretKey(config.getClientSecretKey());
+        socket.setCurvePublicKey(config.getClientPublicKey().getBytes());
+        socket.setCurveSecretKey(config.getClientSecretKey().getBytes());
         
         // Set server public key for validation
-        socket.setCurveServerKey(config.getServerPublicKey());
+        socket.setCurveServerKey(config.getServerPublicKey().getBytes());
         
         log.info("component=zeromq-security event=curve-client-configured " +
                 "correlationId={} operationId={} clientPublicKey={} serverPublicKey={}", 

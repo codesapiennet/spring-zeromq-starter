@@ -55,8 +55,7 @@ public class ZmqContextHolder {
                 log.info("ZeroMQ context initialized successfully");
                 
                 // Log context information for monitoring
-                log.info("ZMQ Context - IO Threads: {}, Max Sockets: {}", 
-                        context.getIoThreads(), context.getMaxSockets());
+                log.info("ZMQ Context - IO Threads: {}", context.getIoThreads());
             }
         }
     }
@@ -192,9 +191,8 @@ public class ZmqContextHolder {
         }
         
         ZContext currentContext = this.context;
-        return String.format("ZContext[status=ACTIVE, ioThreads=%d, maxSockets=%d, activeSockets=%d]",
+        return String.format("ZContext[status=ACTIVE, ioThreads=%d, activeSockets=%d]",
                 currentContext.getIoThreads(),
-                currentContext.getMaxSockets(),
                 currentContext.getSockets().size());
     }
 
