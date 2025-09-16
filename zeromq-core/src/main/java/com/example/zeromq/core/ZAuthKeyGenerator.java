@@ -4,6 +4,7 @@ import com.example.zeromq.core.exception.SecurityException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.ZMQ;
+import zmq.io.mechanism.curve.Curve;
 
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -159,8 +160,9 @@ public final class ZAuthKeyGenerator {
         try {
             long startTime = System.nanoTime();
             
-            // Generate CURVE key pair using JeroMQ API (already Z85 encoded)
-            String[] keyPair = ZMQ.Curve.generateKeyPair();
+            // Generate CURVE key pair using JeroMQ internal API (Z85 encoded)
+            Curve curve = new Curve();
+            String[] keyPair = curve.keypairZ85();
             String publicKey = keyPair[0];
             String secretKey = keyPair[1];
             
@@ -252,9 +254,14 @@ public final class ZAuthKeyGenerator {
      * <p>This method derives the corresponding public key from a given secret key
      * using Curve25519 cryptography.
      * 
+     * <p><strong>Note:</strong> This functionality is currently not supported
+     * in JeroMQ 0.6.0 as the required API is not exposed. Use 
+     * {@link #generateKeyPair()} to generate complete key pairs instead.
+     * 
      * @param secretKey the Z85-encoded secret key
      * @return the corresponding Z85-encoded public key
-     * @throws SecurityException if the secret key is invalid or computation fails
+     * @throws SecurityException if the secret key is invalid, computation fails,
+     *         or the operation is not supported in the current JeroMQ version
      */
     public static String computePublicKey(String secretKey) {
         Objects.requireNonNull(secretKey, "Secret key must not be null");
@@ -264,14 +271,18 @@ public final class ZAuthKeyGenerator {
         }
         
         try {
-            // Use JeroMQ's curve key derivation
-            String publicKey = ZMQ.Curve.publicKey(secretKey);
+            // Note: JeroMQ doesn't expose public key derivation from secret key
+            // This is a limitation of the current JeroMQ API
+            // As a workaround, we'll log this limitation and throw an exception
             
-            log.debug("component=zeromq-security event=public-key-computed " +
-                     "publicKey={}", publicKey);
+            log.warn("component=zeromq-security event=public-key-derivation-not-supported " +
+                    "message=JeroMQ API does not support deriving public key from secret key");
             
-            return publicKey;
+            throw new SecurityException("Public key derivation from secret key is not supported in current JeroMQ version. " +
+                    "Please generate key pairs using generateCurveKeyPair() instead.", "CURVE");
             
+        } catch (SecurityException e) {
+            throw e; // Re-throw our own exception
         } catch (Exception e) {
             log.error("component=zeromq-security event=public-key-computation-failed " +
                      "error={}", e.getMessage());

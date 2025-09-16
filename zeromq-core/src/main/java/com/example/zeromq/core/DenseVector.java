@@ -128,7 +128,7 @@ public final class DenseVector implements Vector {
     /**
      * Get the value at a specific index.
      * 
-     * @param index the index (must be >= 0 and < dimensions)
+     * @param index the index (must be >= 0 and &lt; dimensions)
      * @return the value at the given index
      * @throws IndexOutOfBoundsException if index is invalid
      */
