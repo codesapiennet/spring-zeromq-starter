@@ -6,5 +6,6 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
 com.example.zeromq.core.ZmqContextHolder,\
 com.example.zeromq.core.JacksonMessageConverter,\
+com.example.zeromq.core.VectorMessageConverter,\
 com.example.zeromq.core.ZmqSecurityConfig,\
 com.example.zeromq.core.ZmqSocketFactory 
