@@ -61,7 +61,7 @@ public class ZeroMqProductionConfiguration {
             throw new IllegalStateException("Security configuration is required in production mode");
         }
 
-        if (!properties.getSecurity().isEnabled()) {
+        if (properties.getSecurity().getMechanism() == ZeroMqProperties.Security.Mechanism.NONE) {
             log.error("component=zeromq-security event=security-disabled " +
                      "message='Security is disabled in production mode'");
             throw new IllegalStateException("Security must be enabled in production mode");
@@ -78,7 +78,7 @@ public class ZeroMqProductionConfiguration {
         if (properties.getSecurity() != null) {
             log.info("component=zeromq-security event=security-status " +
                     "enabled={} mechanism={} curveEnabled={}",
-                    properties.getSecurity().isEnabled(),
+                    properties.getSecurity().getMechanism() != ZeroMqProperties.Security.Mechanism.NONE,
                     properties.getSecurity().getMechanism(),
                     properties.getSecurity().getCurve() != null);
         }

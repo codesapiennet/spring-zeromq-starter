@@ -295,7 +295,7 @@ public class ZeroMqMetricsCollector implements MeterBinder, AutoCloseable {
      * @param creationTime the time taken to create the socket
      */
     public void recordSocketCreation(String socketType, Duration creationTime) {
-        socketsCreated.increment(Tags.of("socket.type", socketType));
+        socketsCreated.increment();
         socketCreationTime.record(creationTime);
         socketCreationCounter.increment();
         
@@ -308,7 +308,7 @@ public class ZeroMqMetricsCollector implements MeterBinder, AutoCloseable {
      * @param socketType the type of socket closed
      */
     public void recordSocketClosure(String socketType) {
-        socketsClosed.increment(Tags.of("socket.type", socketType));
+        socketsClosed.increment();
         socketCloseCounter.increment();
         
         log.trace("Recorded socket closure: type={}", socketType);
@@ -322,10 +322,7 @@ public class ZeroMqMetricsCollector implements MeterBinder, AutoCloseable {
      * @param processingTime the time taken to publish
      */
     public void recordMessagePublication(String topic, int messageSize, Duration processingTime) {
-        messagesPublished.increment(Tags.of(
-            "topic", topic != null ? topic : "unknown",
-            "size.category", categorizeSizeSize(messageSize)
-        ));
+        messagesPublished.increment();
         messageProcessingTime.record(processingTime);
         messagePublishCounter.increment();
         
@@ -341,10 +338,7 @@ public class ZeroMqMetricsCollector implements MeterBinder, AutoCloseable {
      * @param processingTime the time taken to process
      */
     public void recordMessageReception(String topic, int messageSize, Duration processingTime) {
-        messagesReceived.increment(Tags.of(
-            "topic", topic != null ? topic : "unknown",
-            "size.category", categorizeSizeSize(messageSize)
-        ));
+        messagesReceived.increment();
         messageProcessingTime.record(processingTime);
         messageReceiveCounter.increment();
         
@@ -359,10 +353,7 @@ public class ZeroMqMetricsCollector implements MeterBinder, AutoCloseable {
      * @param mechanism the security mechanism used
      */
     public void recordSecurityOperation(String operation, String mechanism) {
-        securityOperations.increment(Tags.of(
-            "operation", operation,
-            "mechanism", mechanism
-        ));
+        securityOperations.increment();
         securityOpCounter.increment();
         
         log.trace("Recorded security operation: operation={}, mechanism={}", operation, mechanism);
@@ -375,10 +366,7 @@ public class ZeroMqMetricsCollector implements MeterBinder, AutoCloseable {
      * @param cause the cause of the error
      */
     public void recordError(String errorType, Throwable cause) {
-        errors.increment(Tags.of(
-            "error.type", errorType,
-            "error.class", cause.getClass().getSimpleName()
-        ));
+        errors.increment();
         errorCounter.increment();
         
         log.trace("Recorded error: type={}, cause={}", errorType, cause.getClass().getSimpleName());
@@ -386,21 +374,21 @@ public class ZeroMqMetricsCollector implements MeterBinder, AutoCloseable {
 
     // Gauge value providers
 
-    private double getActiveSocketCount(ZeroMqMetricsCollector collector) {
+    public double getActiveSocketCount() {
         return socketCreationCounter.sum() - socketCloseCounter.sum();
     }
 
-    private double getEstimatedMemoryUsage(ZeroMqMetricsCollector collector) {
+    public double getEstimatedMemoryUsage() {
         Runtime runtime = Runtime.getRuntime();
         long usedMemory = runtime.totalMemory() - runtime.freeMemory();
         
         // Very rough estimate: each socket uses about 64KB on average
-        double estimatedZmqMemory = getActiveSocketCount(collector) * 65536;
+        double estimatedZmqMemory = getActiveSocketCount() * 65536;
         
         return Math.min(estimatedZmqMemory, usedMemory * 0.1); // Cap at 10% of used memory
     }
 
-    private double getCurrentThroughput(ZeroMqMetricsCollector collector) {
+    public double getCurrentThroughput() {
         long currentTime = System.currentTimeMillis();
         long timeSinceLastCollection = currentTime - lastMetricsCollection.get();
         
@@ -412,9 +400,9 @@ public class ZeroMqMetricsCollector implements MeterBinder, AutoCloseable {
         return (totalMessages * 1000.0) / timeSinceLastCollection; // messages per second
     }
 
-    private double getPoolUtilization(ZeroMqMetricsCollector collector) {
+    public double getPoolUtilization() {
         int maxPoolSize = properties.getPool().getMaxSize();
-        double activeConnections = getActiveSocketCount(collector);
+        double activeConnections = getActiveSocketCount();
         
         if (maxPoolSize <= 0) {
             return 0.0;
@@ -423,7 +411,7 @@ public class ZeroMqMetricsCollector implements MeterBinder, AutoCloseable {
         return (activeConnections / maxPoolSize) * 100.0;
     }
 
-    private double isCurveEnabled(ZeroMqMetricsCollector collector) {
+    public double isCurveEnabled() {
         return properties.getSecurity().getMechanism() == ZeroMqProperties.Security.Mechanism.CURVE ? 1.0 : 0.0;
     }
 
@@ -450,7 +438,7 @@ public class ZeroMqMetricsCollector implements MeterBinder, AutoCloseable {
             "messagesReceived", messageReceiveCounter.sum(),
             "securityOperations", securityOpCounter.sum(),
             "errors", errorCounter.sum(),
-            "activeSockets", getActiveSocketCount(this),
+            "activeSockets", getActiveSocketCount(),
             "lastCollection", lastMetricsCollection.get()
         );
     }

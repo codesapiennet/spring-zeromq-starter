@@ -440,7 +440,7 @@ public class ZeroMqConnectionPool implements InitializingBean, DisposableBean {
          * @return true if the connection is valid
          */
         public boolean isValid() {
-            return !destroyed && socket != null && !socket.isClosed();
+            return !destroyed && socket != null;
         }
 
         /**

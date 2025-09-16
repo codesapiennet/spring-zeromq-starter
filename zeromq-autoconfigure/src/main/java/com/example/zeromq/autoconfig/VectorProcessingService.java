@@ -343,7 +343,7 @@ public class VectorProcessingService implements InitializingBean {
         
         try {
             DenseVector[] denseVectors = sparseVectors.parallelStream()
-                .map(sparse -> sparse.toDenseVector(dimensions))
+                .map(sparse -> sparse.toDense())
                 .toArray(DenseVector[]::new);
             
             recordVectorProcessing(sparseVectors.size(), startTime);
@@ -514,7 +514,7 @@ public class VectorProcessingService implements InitializingBean {
         public String toString() {
             return String.format("VectorStatistics[dimensions=%d, meanNorm=%.4f, avgStdDev=%.4f]",
                     mean.getDimensions(), mean.norm(), 
-                    Arrays.stream(standardDeviation.toArray()).average().orElse(0.0));
+                    IntStream.range(0, standardDeviation.getDimensions()).mapToDouble(i -> standardDeviation.get(i)).average().orElse(0.0));
         }
     }
 } 
