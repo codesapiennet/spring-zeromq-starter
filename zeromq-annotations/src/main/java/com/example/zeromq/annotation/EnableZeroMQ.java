@@ -21,7 +21,7 @@ import java.lang.annotation.*;
  * <li>Initialize metrics and monitoring</li>
  * </ul>
  * 
- * <h3>Basic Usage:</h3>
+ * Usage Examples:
  * <pre>
  * {@literal @}Configuration
  * {@literal @}EnableZeroMQ
@@ -30,7 +30,7 @@ import java.lang.annotation.*;
  * }
  * </pre>
  * 
- * <h3>With Custom Configuration:</h3>
+ * With Custom Configuration:
  * <pre>
  * {@literal @}Configuration
  * {@literal @}EnableZeroMQ(

@@ -19,7 +19,7 @@ import java.lang.annotation.*;
  * <p>When used on methods, it provides additional topic configuration for
  * publishers and subscribers beyond what's available in the main annotations.
  * 
- * <h3>Usage Examples:</h3>
+ * Usage Examples:
  * <pre>
  * // Parameter annotation - receive topic information
  * {@literal @}ZeroMQSubscriber(endpoint = "tcp://localhost:5555")

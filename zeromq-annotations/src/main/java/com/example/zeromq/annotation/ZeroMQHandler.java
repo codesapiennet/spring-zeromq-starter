@@ -18,7 +18,7 @@ import java.lang.annotation.*;
  * <li>Integrate with Spring's transaction management</li>
  * </ul>
  * 
- * <h3>Usage Examples:</h3>
+ * Usage Examples:
  * <pre>
  * // Simple handler for any message type
  * {@literal @}ZeroMQHandler

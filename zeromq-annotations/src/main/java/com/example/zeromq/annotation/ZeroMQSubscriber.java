@@ -13,7 +13,7 @@ import java.lang.annotation.*;
  * <p>This annotation supports various messaging patterns including
  * publish-subscribe, pull (load-balanced), and request-reply patterns.
  * 
- * <h3>Usage Examples:</h3>
+ * Usage Examples:
  * <pre>
  * // Simple subscription
  * {@literal @}ZeroMQSubscriber(endpoint = "tcp://localhost:5555")

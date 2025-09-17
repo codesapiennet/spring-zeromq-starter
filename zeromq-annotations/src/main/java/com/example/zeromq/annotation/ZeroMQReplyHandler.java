@@ -18,7 +18,7 @@ import java.lang.annotation.*;
  * <li>Timeout handling for missing or delayed replies</li>
  * </ul>
  * 
- * <h3>Usage Examples:</h3>
+ * Usage Examples:
  * <pre>
  * // Simple reply handler
  * {@literal @}ZeroMQReplyHandler

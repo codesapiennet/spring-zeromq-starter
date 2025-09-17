@@ -13,7 +13,7 @@ import java.lang.annotation.*;
  * with topic-based routing. Security can be configured through properties or
  * additional annotations.
  * 
- * <h3>Usage Examples:</h3>
+ * <p>Usage Examples:
  * <pre>
  * // Simple publishing
  * {@literal @}ZeroMQPublisher(endpoint = "tcp://*:5555")

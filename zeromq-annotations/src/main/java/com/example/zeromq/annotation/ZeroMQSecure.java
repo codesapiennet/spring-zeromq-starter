@@ -19,7 +19,7 @@ import java.lang.annotation.*;
  * <li>Role-based authorization</li>
  * </ul>
  * 
- * <h3>Usage Examples:</h3>
+ * Usage Examples:
  * <pre>
  * // Class-level security - applies to all messaging methods
  * {@literal @}ZeroMQSecure(mechanism = SecurityMechanism.CURVE, profile = "production")

@@ -18,7 +18,7 @@ import java.lang.annotation.*;
  * <li>Correlation IDs are handled automatically</li>
  * </ul>
  * 
- * <h3>Usage Examples:</h3>
+ * Usage Examples:
  * <pre>
  * // Simple request handler
  * {@literal @}ZeroMQRequestHandler(endpoint = "tcp://*:5555")
@@ -29,7 +29,7 @@ import java.lang.annotation.*;
  * // Complex request handler with validation
  * {@literal @}ZeroMQRequestHandler(
  *     endpoint = "tcp://*:5556",
- *     validate = "#request != null && #request.isValid()",
+ *     validate = "{@code #request != null && #request.isValid()}",
  *     timeout = 10000
  * )
  * public ProcessingResult handleBusinessRequest(BusinessRequest request) {
