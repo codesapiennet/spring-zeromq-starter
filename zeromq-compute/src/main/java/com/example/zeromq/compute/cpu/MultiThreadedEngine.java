@@ -72,47 +72,42 @@ public class MultiThreadedEngine extends ComputeEngine {
                 return new DenseVector(result);
             }
 
-            // Use structured concurrency with virtual threads to partition rows
+            // Partition rows using executor and the compatibility helper (cancels remaining tasks on first failure)
             int partitions = Math.min(Math.max(1, Runtime.getRuntime().availableProcessors() * 2), rows);
             int chunk = (rows + partitions - 1) / partitions;
-            try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
-                java.util.List<java.util.concurrent.StructuredTaskScope.Subtask<DenseVector>> subs = new java.util.ArrayList<>();
-                for (int p = 0; p < partitions; p++) {
-                    int start = p * chunk;
-                    int end = Math.min(rows, start + chunk);
-                    if (start >= end) break;
-                    subs.add(scope.fork(() -> {
-                        float[] part = new float[end - start];
-                        for (int i = start; i < end; i++) {
-                            float sum = 0.0f;
-                            float[] row = matrix[i];
-                            for (int j = 0; j < cols; j++) sum += row[j] * vector.getData()[j];
-                            part[i - start] = sum;
-                        }
-                        return new DenseVector(part);
-                    }));
-                }
+            java.util.List<java.util.concurrent.Callable<DenseVector>> tasks = new java.util.ArrayList<>();
+            for (int p = 0; p < partitions; p++) {
+                int start = p * chunk;
+                int end = Math.min(rows, start + chunk);
+                if (start >= end) break;
+                final int s = start, e = end;
+                tasks.add(() -> {
+                    float[] part = new float[e - s];
+                    for (int i = s; i < e; i++) {
+                        float sum = 0.0f;
+                        float[] row = matrix[i];
+                        for (int j = 0; j < cols; j++) sum += row[j] * vector.getData()[j];
+                        part[i - s] = sum;
+                    }
+                    return new DenseVector(part);
+                });
+            }
 
-                scope.join();
-                scope.throwIfFailed();
+            try {
+                var parts = com.example.zeromq.compute.util.ConcurrencyUtils.invokeAllCancelOnFailure(executor, tasks);
 
                 // Collect sub-results and preallocate a single output buffer to avoid many intermediate arrays
-                java.util.List<float[]> parts = new java.util.ArrayList<>(subs.size());
+                java.util.List<float[]> partArrays = new java.util.ArrayList<>(parts.size());
                 int totalLen = 0;
-                for (var sub : subs) {
-                    try {
-                        DenseVector dv = sub.get();
-                        float[] data = dv.getData();
-                        parts.add(data);
-                        totalLen += dv.getDimensions();
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
+                for (var dv : parts) {
+                    float[] data = dv.getData();
+                    partArrays.add(data);
+                    totalLen += dv.getDimensions();
                 }
 
                 float[] accumulated = com.example.zeromq.core.BufferPool.INSTANCE.acquire(totalLen);
                 int offset = 0;
-                for (float[] part : parts) {
+                for (float[] part : partArrays) {
                     System.arraycopy(part, 0, accumulated, offset, part.length);
                     offset += part.length;
                 }
@@ -147,31 +142,24 @@ public class MultiThreadedEngine extends ComputeEngine {
             }
 
             int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
-            try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
-                java.util.List<java.util.concurrent.StructuredTaskScope.Subtask<java.lang.Float>> subs = new java.util.ArrayList<>();
-                int chunk = (n + partitions - 1) / partitions;
-                for (int p = 0; p < partitions; p++) {
-                    int start = p * chunk;
-                    int end = Math.min(n, start + chunk);
-                    if (start >= end) break;
-                    subs.add(scope.fork(() -> {
-                        double sum = 0.0;
-                        for (int i = start; i < end; i++) sum += (double) v1.getData()[i] * v2.getData()[i];
-                        return (float) sum;
-                    }));
-                }
+            int chunk = (n + partitions - 1) / partitions;
+            java.util.List<java.util.concurrent.Callable<Float>> tasks = new java.util.ArrayList<>();
+            for (int p = 0; p < partitions; p++) {
+                int start = p * chunk;
+                int end = Math.min(n, start + chunk);
+                if (start >= end) break;
+                final int s = start, e = end;
+                tasks.add(() -> {
+                    double sum = 0.0;
+                    for (int i = s; i < e; i++) sum += (double) v1.getData()[i] * v2.getData()[i];
+                    return (float) sum;
+                });
+            }
 
-                scope.join();
-                scope.throwIfFailed();
-
+            try {
+                var results = com.example.zeromq.compute.util.ConcurrencyUtils.invokeAllCancelOnFailure(executor, tasks);
                 double total = 0.0;
-                for (var s : subs) {
-                    try {
-                        total += s.get();
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                }
+                for (Float f : results) total += f;
                 return (float) total;
             } catch (Exception e) {
                 log.error("Virtual-thread dotProduct failed: {}", e.getMessage(), e);
@@ -206,32 +194,31 @@ public class MultiThreadedEngine extends ComputeEngine {
 
             int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
             int chunk = (n + partitions - 1) / partitions;
-            try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
-                java.util.List<java.util.concurrent.StructuredTaskScope.Subtask<Void>> subs = new java.util.ArrayList<>();
-                for (int p = 0; p < partitions; p++) {
-                    int start = p * chunk;
-                    int end = Math.min(n, start + chunk);
-                    if (start >= end) break;
-                    subs.add(scope.fork(() -> {
-                        for (int i = start; i < end; i++) {
-                            switch (op) {
-                                case ADD -> out[i] = a[i] + b[i];
-                                case SUBTRACT -> out[i] = a[i] - b[i];
-                                case MULTIPLY -> out[i] = a[i] * b[i];
-                                case DIVIDE -> out[i] = b[i] == 0.0f ? Float.NaN : a[i] / b[i];
-                                case RELU -> out[i] = Math.max(0.0f, a[i]);
-                                case SIGMOID -> out[i] = (float) (1.0 / (1.0 + Math.exp(-a[i])));
-                                case TANH -> out[i] = (float) Math.tanh(a[i]);
-                                default -> throw new UnsupportedOperationException("Operation not implemented: " + op);
-                            }
+            java.util.List<java.util.concurrent.Callable<Void>> tasks = new java.util.ArrayList<>();
+            for (int p = 0; p < partitions; p++) {
+                int start = p * chunk;
+                int end = Math.min(n, start + chunk);
+                if (start >= end) break;
+                final int s = start, e = end;
+                tasks.add(() -> {
+                    for (int i = s; i < e; i++) {
+                        switch (op) {
+                            case ADD -> out[i] = a[i] + b[i];
+                            case SUBTRACT -> out[i] = a[i] - b[i];
+                            case MULTIPLY -> out[i] = a[i] * b[i];
+                            case DIVIDE -> out[i] = b[i] == 0.0f ? Float.NaN : a[i] / b[i];
+                            case RELU -> out[i] = Math.max(0.0f, a[i]);
+                            case SIGMOID -> out[i] = (float) (1.0 / (1.0 + Math.exp(-a[i])));
+                            case TANH -> out[i] = (float) Math.tanh(a[i]);
+                            default -> throw new UnsupportedOperationException("Operation not implemented: " + op);
                         }
-                        return null;
-                    }));
-                }
+                    }
+                    return null;
+                });
+            }
 
-                scope.join();
-                scope.throwIfFailed();
-
+            try {
+                com.example.zeromq.compute.util.ConcurrencyUtils.invokeAllCancelOnFailure(executor, tasks);
                 return new DenseVector(out);
             } catch (Exception e) {
                 log.error("Virtual-thread elementwiseOperation failed: {}", e.getMessage(), e);
@@ -254,19 +241,18 @@ public class MultiThreadedEngine extends ComputeEngine {
                 return new BatchVector(results);
             }
 
-            try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
-                java.util.List<java.util.concurrent.StructuredTaskScope.Subtask<Void>> subs = new java.util.ArrayList<>();
-                for (int i = 0; i < vectors.length; i++) {
-                    final int idx = i;
-                    subs.add(scope.fork(() -> {
-                        float[] processed = kernel.execute(vectors[idx].getData(), 1, vectors[idx].getDimensions());
-                        results[idx] = new DenseVector(processed);
-                        return null;
-                    }));
-                }
+            java.util.List<java.util.concurrent.Callable<Void>> tasks = new java.util.ArrayList<>();
+            for (int i = 0; i < vectors.length; i++) {
+                final int idx = i;
+                tasks.add(() -> {
+                    float[] processed = kernel.execute(vectors[idx].getData(), 1, vectors[idx].getDimensions());
+                    results[idx] = new DenseVector(processed);
+                    return null;
+                });
+            }
 
-                scope.join();
-                scope.throwIfFailed();
+            try {
+                com.example.zeromq.compute.util.ConcurrencyUtils.invokeAllCancelOnFailure(executor, tasks);
                 return new BatchVector(results);
             } catch (Exception e) {
                 log.error("Virtual-thread batchProcess failed: {}", e.getMessage(), e);
@@ -314,30 +300,28 @@ public class MultiThreadedEngine extends ComputeEngine {
 
         // Virtual-thread structured approach: compute dot and norms in subtasks
         return CompletableFuture.supplyAsync(() -> {
-            try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
-                var dot = scope.fork(() -> dotProduct(v1, v2).join());
-                var n1 = scope.fork(() -> {
-                    double s = 0.0;
-                    for (float f : v1.getData()) s += (double) f * f;
-                    return (float) Math.sqrt(s);
-                });
-                var n2 = scope.fork(() -> {
-                    double s = 0.0;
-                    for (float f : v2.getData()) s += (double) f * f;
-                    return (float) Math.sqrt(s);
-                });
+            java.util.List<java.util.concurrent.Callable<Float>> tasks = new java.util.ArrayList<>();
+            // dot
+            tasks.add(() -> dotProduct(v1, v2).join());
+            // n1
+            tasks.add(() -> {
+                double s = 0.0;
+                for (float f : v1.getData()) s += (double) f * f;
+                return (float) Math.sqrt(s);
+            });
+            // n2
+            tasks.add(() -> {
+                double s = 0.0;
+                for (float f : v2.getData()) s += (double) f * f;
+                return (float) Math.sqrt(s);
+            });
 
-                scope.join();
-                scope.throwIfFailed();
-
-                try {
-                    float dotVal = dot.get();
-                    float n1Val = n1.get();
-                    float n2Val = n2.get();
-                    return dotVal / (n1Val * n2Val);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+            try {
+                var res = com.example.zeromq.compute.util.ConcurrencyUtils.invokeAllCancelOnFailure(executor, tasks);
+                float dotVal = res.get(0);
+                float n1Val = res.get(1);
+                float n2Val = res.get(2);
+                return dotVal / (n1Val * n2Val);
             } catch (Exception e) {
                 log.error("Virtual-thread cosineSimilarity failed: {}", e.getMessage(), e);
                 throw new RuntimeException(e);

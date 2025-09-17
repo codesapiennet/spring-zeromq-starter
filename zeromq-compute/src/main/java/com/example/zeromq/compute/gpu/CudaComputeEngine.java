@@ -88,25 +88,25 @@ public class CudaComputeEngine extends ComputeEngine {
                     float[] result = new float[rows];
                     int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
                     int chunk = (rows + partitions - 1) / partitions;
-                    try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
-                        java.util.List<java.util.concurrent.StructuredTaskScope.Subtask<Void>> subs = new java.util.ArrayList<>();
-                        for (int p = 0; p < partitions; p++) {
-                            int start = p * chunk;
-                            int end = Math.min(rows, start + chunk);
-                            if (start >= end) break;
-                            subs.add(scope.fork(() -> {
-                                for (int i = start; i < end; i++) {
-                                    float sum = 0.0f;
-                                    float[] row = matrix[i];
-                                    for (int j = 0; j < row.length; j++) sum += row[j] * vector.getData()[j];
-                                    result[i] = sum;
-                                }
-                                return null;
-                            }));
-                        }
+                    java.util.List<java.util.concurrent.Callable<Void>> tasks = new java.util.ArrayList<>();
+                    for (int p = 0; p < partitions; p++) {
+                        int start = p * chunk;
+                        int end = Math.min(rows, start + chunk);
+                        if (start >= end) break;
+                        final int s = start, e = end;
+                        tasks.add(() -> {
+                            for (int i = s; i < e; i++) {
+                                float sum = 0.0f;
+                                float[] row = matrix[i];
+                                for (int j = 0; j < row.length; j++) sum += row[j] * vector.getData()[j];
+                                result[i] = sum;
+                            }
+                            return null;
+                        });
+                    }
 
-                        scope.join();
-                        scope.throwIfFailed();
+                    try {
+                        com.example.zeromq.compute.util.ConcurrencyUtils.invokeAllCancelOnFailure(gpuExecutor, tasks);
                         return new DenseVector(result);
                     } catch (Exception e) {
                         log.error("Virtual-thread fallback matrixVectorMultiply failed: {}", e.getMessage(), e);
@@ -162,24 +162,24 @@ public class CudaComputeEngine extends ComputeEngine {
                         float[] fb = new float[r];
                         int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
                         int chunk = (r + partitions - 1) / partitions;
-                        try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
-                            java.util.List<java.util.concurrent.StructuredTaskScope.Subtask<Void>> subs = new java.util.ArrayList<>();
-                            for (int p = 0; p < partitions; p++) {
-                                int start = p * chunk;
-                                int end = Math.min(r, start + chunk);
-                                if (start >= end) break;
-                                subs.add(scope.fork(() -> {
-                                    for (int i = start; i < end; i++) {
-                                        float s = 0.0f;
-                                        float[] row = matrix[i];
-                                        for (int j = 0; j < row.length; j++) s += row[j] * vectorData[j];
-                                        fb[i] = s;
-                                    }
-                                    return null;
-                                }));
-                            }
-                            scope.join();
-                            scope.throwIfFailed();
+                        java.util.List<java.util.concurrent.Callable<Void>> tasks = new java.util.ArrayList<>();
+                        for (int p = 0; p < partitions; p++) {
+                            int start = p * chunk;
+                            int end = Math.min(r, start + chunk);
+                            if (start >= end) break;
+                            final int s = start, e = end;
+                            tasks.add(() -> {
+                                for (int i = s; i < e; i++) {
+                                    float ssum = 0.0f;
+                                    float[] row = matrix[i];
+                                    for (int j = 0; j < row.length; j++) ssum += row[j] * vectorData[j];
+                                    fb[i] = ssum;
+                                }
+                                return null;
+                            });
+                        }
+                        try {
+                            com.example.zeromq.compute.util.ConcurrencyUtils.invokeAllCancelOnFailure(gpuExecutor, tasks);
                             return new DenseVector(fb);
                         } catch (Exception e) {
                             log.error("Virtual-thread fallback after GPU failed: {}", e.getMessage(), e);
@@ -198,28 +198,28 @@ public class CudaComputeEngine extends ComputeEngine {
                         float[] fb = new float[r];
                         int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
                         int chunk = (r + partitions - 1) / partitions;
-                        try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
-                            java.util.List<java.util.concurrent.StructuredTaskScope.Subtask<Void>> subs = new java.util.ArrayList<>();
-                            for (int p = 0; p < partitions; p++) {
-                                int start = p * chunk;
-                                int end = Math.min(r, start + chunk);
-                                if (start >= end) break;
-                                subs.add(scope.fork(() -> {
-                                    for (int i = start; i < end; i++) {
-                                        float s = 0.0f;
-                                        float[] row = matrix[i];
-                                        for (int j = 0; j < row.length; j++) s += row[j] * vectorData[j];
-                                        fb[i] = s;
-                                    }
-                                    return null;
-                                }));
-                            }
-                            scope.join();
-                            scope.throwIfFailed();
-                            return new DenseVector(fb);
+                        java.util.List<java.util.concurrent.Callable<Void>> tasks = new java.util.ArrayList<>();
+                        for (int p = 0; p < partitions; p++) {
+                            int start = p * chunk;
+                            int end = Math.min(r, start + chunk);
+                            if (start >= end) break;
+                            final int s = start, e = end;
+                            tasks.add(() -> {
+                                for (int i = s; i < e; i++) {
+                                    float ssum = 0.0f;
+                                    float[] row = matrix[i];
+                                    for (int j = 0; j < row.length; j++) ssum += row[j] * vectorData[j];
+                                    fb[i] = ssum;
+                                }
+                                return null;
+                            });
                         }
-                    } catch (Exception e) {
-                        log.error("Virtual-thread fallback after CUDA exception failed: {}", e.getMessage(), e);
+                        try {
+                            com.example.zeromq.compute.util.ConcurrencyUtils.invokeAllCancelOnFailure(gpuExecutor, tasks);
+                            return new DenseVector(fb);
+                        } catch (Exception e) {
+                            log.error("Virtual-thread fallback after CUDA exception failed: {}", e.getMessage(), e);
+                        }
                     }
                 }
                 return fallbackCpuMatrixMultiply(matrix, vector);
@@ -286,19 +286,17 @@ public class CudaComputeEngine extends ComputeEngine {
             return CompletableFuture.supplyAsync(() -> {
                 var vectors = input.getVectors();
                 var results = new DenseVector[vectors.length];
-                try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
-                    java.util.List<java.util.concurrent.StructuredTaskScope.Subtask<Void>> subs = new java.util.ArrayList<>();
-                    for (int i = 0; i < vectors.length; i++) {
-                        final int idx = i;
-                        subs.add(scope.fork(() -> {
-                            float[] processed = kernel.execute(vectors[idx].getData(), 1, vectors[idx].getDimensions());
-                            results[idx] = new DenseVector(processed);
-                            return null;
-                        }));
-                    }
-
-                    scope.join();
-                    scope.throwIfFailed();
+                java.util.List<java.util.concurrent.Callable<Void>> tasks = new java.util.ArrayList<>();
+                for (int i = 0; i < vectors.length; i++) {
+                    final int idx = i;
+                    tasks.add(() -> {
+                        float[] processed = kernel.execute(vectors[idx].getData(), 1, vectors[idx].getDimensions());
+                        results[idx] = new DenseVector(processed);
+                        return null;
+                    });
+                }
+                try {
+                    com.example.zeromq.compute.util.ConcurrencyUtils.invokeAllCancelOnFailure(gpuExecutor, tasks);
                     return new BatchVector(results);
                 } catch (Exception e) {
                     log.error("Virtual-thread batchProcess in CudaComputeEngine failed: {}", e.getMessage(), e);
@@ -352,31 +350,27 @@ public class CudaComputeEngine extends ComputeEngine {
             if (usingVirtualThreads) {
                 return CompletableFuture.supplyAsync(() -> {
                     int n = v1.getDimensions();
-                    try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
-                        var subs = new java.util.ArrayList<java.util.concurrent.StructuredTaskScope.Subtask<Float>>();
-                        int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
-                        int chunk = (n + partitions - 1) / partitions;
-                        float[] a = v1.getData();
-                        float[] b = v2.getData();
-                        for (int p = 0; p < partitions; p++) {
-                            int start = p * chunk;
-                            int end = Math.min(n, start + chunk);
-                            if (start >= end) break;
-                            final int s = start, e = end;
-                            subs.add(scope.fork(() -> {
-                                double partial = 0.0;
-                                for (int i = s; i < e; i++) partial += (double) a[i] * b[i];
-                                return (float) partial;
-                            }));
-                        }
+                    int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
+                    int chunk = (n + partitions - 1) / partitions;
+                    java.util.List<java.util.concurrent.Callable<Float>> tasks = new java.util.ArrayList<>();
+                    float[] a = v1.getData();
+                    float[] b = v2.getData();
+                    for (int p = 0; p < partitions; p++) {
+                        int start = p * chunk;
+                        int end = Math.min(n, start + chunk);
+                        if (start >= end) break;
+                        final int s = start, e = end;
+                        tasks.add(() -> {
+                            double partial = 0.0;
+                            for (int i = s; i < e; i++) partial += (double) a[i] * b[i];
+                            return (float) partial;
+                        });
+                    }
 
-                        scope.join();
-                        scope.throwIfFailed();
-
+                    try {
+                        var results = com.example.zeromq.compute.util.ConcurrencyUtils.invokeAllCancelOnFailure(gpuExecutor, tasks);
                         double total = 0.0;
-                        for (var sub : subs) {
-                            try { total += sub.get(); } catch (Exception e) { throw new RuntimeException(e); }
-                        }
+                        for (Float f : results) total += f;
                         return (float) total;
                     } catch (Exception e) {
                         log.error("Virtual-thread dotProduct fallback failed: {}", e.getMessage(), e);
@@ -434,34 +428,30 @@ public class CudaComputeEngine extends ComputeEngine {
             if (usingVirtualThreads) {
                 return CompletableFuture.supplyAsync(() -> {
                     float[] result = new float[length];
-                    try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
-                        var subs = new java.util.ArrayList<java.util.concurrent.StructuredTaskScope.Subtask<Void>>();
-                        int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
-                        int chunk = (length + partitions - 1) / partitions;
-                        for (int p = 0; p < partitions; p++) {
-                            int start = p * chunk;
-                            int end = Math.min(length, start + chunk);
-                            if (start >= end) break;
-                            final int s = start, e = end;
-                            subs.add(scope.fork(() -> {
-                                for (int i = s; i < e; i++) {
-                                    switch (op) {
-                                        case ADD -> result[i] = a[i] + b[i];
-                                        case SUBTRACT -> result[i] = a[i] - b[i];
-                                        case MULTIPLY -> result[i] = a[i] * b[i];
-                                        case DIVIDE -> {
-                                            float denom = b[i];
-                                            result[i] = denom == 0.0f ? Float.NaN : a[i] / denom;
-                                        }
-                                        case RELU -> result[i] = Math.max(0.0f, a[i]);
-                                        default -> throw new UnsupportedOperationException("Operation not implemented: " + op);
-                                    }
+                    java.util.List<java.util.concurrent.Callable<Void>> tasks = new java.util.ArrayList<>();
+                    int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
+                    int chunk = (length + partitions - 1) / partitions;
+                    for (int p = 0; p < partitions; p++) {
+                        int start = p * chunk;
+                        int end = Math.min(length, start + chunk);
+                        if (start >= end) break;
+                        final int s = start, e = end;
+                        tasks.add(() -> {
+                            for (int i = s; i < e; i++) {
+                                switch (op) {
+                                    case ADD -> result[i] = a[i] + b[i];
+                                    case SUBTRACT -> result[i] = a[i] - b[i];
+                                    case MULTIPLY -> result[i] = a[i] * b[i];
+                                    case DIVIDE -> result[i] = b[i] == 0.0f ? Float.NaN : a[i] / b[i];
+                                    case RELU -> result[i] = Math.max(0.0f, a[i]);
+                                    default -> throw new UnsupportedOperationException("Operation not implemented: " + op);
                                 }
-                                return null;
-                            }));
-                        }
-                        scope.join();
-                        scope.throwIfFailed();
+                            }
+                            return null;
+                        });
+                    }
+                    try {
+                        com.example.zeromq.compute.util.ConcurrencyUtils.invokeAllCancelOnFailure(gpuExecutor, tasks);
                         return new DenseVector(result);
                     } catch (Exception e) {
                         log.error("Virtual-thread elementwiseOperation fallback failed: {}", e.getMessage(), e);
