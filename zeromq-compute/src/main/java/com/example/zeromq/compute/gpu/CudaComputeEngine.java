@@ -193,7 +193,7 @@ public class CudaComputeEngine extends ComputeEngine {
             } catch (Throwable t) {
                 log.error("CUDA matrixVectorMultiply failed: {}", t.getMessage(), t);
                 if (usingVirtualThreads) {
-                    try {
+                    {
                         int r = rows;
                         float[] fb = new float[r];
                         int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
