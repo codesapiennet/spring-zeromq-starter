@@ -1,0 +1,35 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+sampleapp:
+  server:
+    enabled: false
+  messaging:
+    enabled: false
+  vectorprocessing:
+    enabled: false
+  compute:
+    enabled: false
+  ml:
+    enabled: false
+
+spring:
+  zeromq:
+    security:
+      mechanism: CURVE
+      profile: prod
+      curve:
+        server-public-key: ${ZEROMQ_SERVER_PUBLIC_KEY}
+        server-secret-key: ${ZEROMQ_SERVER_SECRET_KEY}
+        client-public-key: ${ZEROMQ_CLIENT_PUBLIC_KEY}
+        client-secret-key: ${ZEROMQ_CLIENT_SECRET_KEY}
+        mutual-auth: true
+
+logging:
+  level:
+    com.example.zeromq: INFO
+    root: WARN
+  pattern:
+    console: '{"timestamp":"%d{ISO8601}","level":"%-5level","thread":"%thread","logger":"%logger{36}","message":"%msg","correlation_id":"%X{correlationId:-}"}' 

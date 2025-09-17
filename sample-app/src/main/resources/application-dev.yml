@@ -1,0 +1,28 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+sampleapp:
+  server:
+    enabled: true
+  messaging:
+    enabled: true
+  vectorprocessing:
+    enabled: true
+  compute:
+    enabled: true
+  ml:
+    enabled: true
+
+# Relax security for local development
+spring:
+  zeromq:
+    security:
+      mechanism: NONE
+      profile: dev
+
+logging:
+  level:
+    com.example.zeromq: DEBUG
+    org.zeromq: INFO 

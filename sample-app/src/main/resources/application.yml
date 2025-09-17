@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: sample-zeromq-app
+
+# Sample application feature toggles
+sampleapp:
+  server:
+    enabled: false
+  messaging:
+    enabled: false
+  vectorprocessing:
+    enabled: false
+  compute:
+    enabled: false
+  ml:
+    enabled: false
+
+# Default ZeroMQ settings are inherited from zeromq-autoconfigure; keep secure-by-default in this app
+# Use environment variables or profile-specific files to enable demo features.
+
+logging:
+  level:
+    com.example.zeromq: INFO
+    org.zeromq: INFO 
