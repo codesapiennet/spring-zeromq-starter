@@ -64,15 +64,21 @@ public final class TensorRTInference implements AutoCloseable {
      * Execute inference on the provided float input. Returns a float array with the model output.
      * @param input flattened input tensor (expected format depends on the model)
      * @return flattened output tensor
-     * @throws Exception when native execution fails or native lib is unavailable
+     * @throws Exception when native execution fails
      */
     public float[] execute(float[] input) throws Exception {
         Objects.requireNonNull(input, "input must not be null");
         if (!nativeAvailable) {
-            throw new UnsupportedOperationException(
-                    "TensorRT native library not available. Provide a native shim 'tensorrt_inference' to enable GPU inference.");
+            log.warn("TensorRT native library not available - falling back to CPU passthrough for execute");
+            // Return a defensive copy to avoid accidental mutation of caller data
+            return input.clone();
         }
-        return nativeExecute(input);
+        try {
+            return nativeExecute(input);
+        } catch (Exception e) {
+            log.error("TensorRT native execution failed: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     /**

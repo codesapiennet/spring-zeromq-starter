@@ -26,6 +26,8 @@
         <module>zeromq-core</module>
         <module>zeromq-autoconfigure</module>
         <module>zeromq-annotations</module>
+        <module>zeromq-compute</module>
+        <module>zeromq-examples</module>
     </modules>
 
     <properties>
