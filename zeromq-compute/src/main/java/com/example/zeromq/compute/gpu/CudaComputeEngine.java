@@ -3,6 +3,7 @@ package com.example.zeromq.compute.gpu;
 import com.example.zeromq.compute.ComputeEngine;
 import com.example.zeromq.core.BatchVector;
 import com.example.zeromq.core.DenseVector;
+import com.example.zeromq.autoconfig.ZeroMqProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -31,12 +32,21 @@ public class CudaComputeEngine extends ComputeEngine {
 
     private final ExecutorService gpuExecutor = Executors.newFixedThreadPool(Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
 
+    private final boolean usingVirtualThreads;
+
     private CUcontext context;
     private CUdevice device;
     private volatile boolean initialized = false;
     private String deviceName = "unknown";
 
-    public CudaComputeEngine() {
+    public CudaComputeEngine(ZeroMqProperties properties) {
+        boolean useVirtual = false;
+        try {
+            useVirtual = properties != null && properties.getCompute() != null
+                    && properties.getCompute().getMultithreaded() != null
+                    && properties.getCompute().getMultithreaded().isUseVirtualThreads();
+        } catch (Exception ignored) {}
+        this.usingVirtualThreads = useVirtual;
         initializeCuda();
     }
 
@@ -71,6 +81,39 @@ public class CudaComputeEngine extends ComputeEngine {
     @Override
     public CompletableFuture<DenseVector> matrixVectorMultiply(float[][] matrix, DenseVector vector) {
         if (!initialized) {
+            if (usingVirtualThreads) {
+                return CompletableFuture.supplyAsync(() -> {
+                    int rows = matrix.length;
+                    float[] result = new float[rows];
+                    int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
+                    int chunk = (rows + partitions - 1) / partitions;
+                    try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
+                        java.util.List<java.util.concurrent.StructuredTaskScope.Subtask<Void>> subs = new java.util.ArrayList<>();
+                        for (int p = 0; p < partitions; p++) {
+                            int start = p * chunk;
+                            int end = Math.min(rows, start + chunk);
+                            if (start >= end) break;
+                            subs.add(scope.fork(() -> {
+                                for (int i = start; i < end; i++) {
+                                    float sum = 0.0f;
+                                    float[] row = matrix[i];
+                                    for (int j = 0; j < row.length; j++) sum += row[j] * vector.getData()[j];
+                                    result[i] = sum;
+                                }
+                                return null;
+                            }));
+                        }
+
+                        scope.join();
+                        scope.throwIfFailed();
+                        return new DenseVector(result);
+                    } catch (Exception e) {
+                        log.error("Virtual-thread fallback matrixVectorMultiply failed: {}", e.getMessage(), e);
+                        throw new RuntimeException(e);
+                    }
+                }, gpuExecutor);
+            }
+
             return CompletableFuture.supplyAsync(() -> fallbackCpuMatrixMultiply(matrix, vector));
         }
 
@@ -108,12 +151,72 @@ public class CudaComputeEngine extends ComputeEngine {
                 for (float v : result) { if (v != 0.0f) { allZero = false; break; } }
                 if (allZero) {
                     log.warn("GPU kernel produced all-zero result; falling back to CPU implementation");
+                    if (usingVirtualThreads) {
+                        // perform virtual-threaded fallback
+                        int r = rows;
+                        float[] fb = new float[r];
+                        int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
+                        int chunk = (r + partitions - 1) / partitions;
+                        try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
+                            java.util.List<java.util.concurrent.StructuredTaskScope.Subtask<Void>> subs = new java.util.ArrayList<>();
+                            for (int p = 0; p < partitions; p++) {
+                                int start = p * chunk;
+                                int end = Math.min(r, start + chunk);
+                                if (start >= end) break;
+                                subs.add(scope.fork(() -> {
+                                    for (int i = start; i < end; i++) {
+                                        float s = 0.0f;
+                                        float[] row = matrix[i];
+                                        for (int j = 0; j < row.length; j++) s += row[j] * vectorData[j];
+                                        fb[i] = s;
+                                    }
+                                    return null;
+                                }));
+                            }
+                            scope.join();
+                            scope.throwIfFailed();
+                            return new DenseVector(fb);
+                        } catch (Exception e) {
+                            log.error("Virtual-thread fallback after GPU failed: {}", e.getMessage(), e);
+                            return fallbackCpuMatrixMultiply(matrix, vector);
+                        }
+                    }
                     return fallbackCpuMatrixMultiply(matrix, vector);
                 }
 
                 return new DenseVector(result);
             } catch (Throwable t) {
                 log.error("CUDA matrixVectorMultiply failed: {}", t.getMessage(), t);
+                if (usingVirtualThreads) {
+                    try {
+                        int r = rows;
+                        float[] fb = new float[r];
+                        int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
+                        int chunk = (r + partitions - 1) / partitions;
+                        try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
+                            java.util.List<java.util.concurrent.StructuredTaskScope.Subtask<Void>> subs = new java.util.ArrayList<>();
+                            for (int p = 0; p < partitions; p++) {
+                                int start = p * chunk;
+                                int end = Math.min(r, start + chunk);
+                                if (start >= end) break;
+                                subs.add(scope.fork(() -> {
+                                    for (int i = start; i < end; i++) {
+                                        float s = 0.0f;
+                                        float[] row = matrix[i];
+                                        for (int j = 0; j < row.length; j++) s += row[j] * vectorData[j];
+                                        fb[i] = s;
+                                    }
+                                    return null;
+                                }));
+                            }
+                            scope.join();
+                            scope.throwIfFailed();
+                            return new DenseVector(fb);
+                        }
+                    } catch (Exception e) {
+                        log.error("Virtual-thread fallback after CUDA exception failed: {}", e.getMessage(), e);
+                    }
+                }
                 return fallbackCpuMatrixMultiply(matrix, vector);
             } finally {
                 try { JCudaDriver.cuMemFree(dMatrix); } catch (Throwable ignored) {}
@@ -160,9 +263,9 @@ public class CudaComputeEngine extends ComputeEngine {
 
     @Override
     public CompletableFuture<BatchVector> batchProcess(BatchVector input, com.example.zeromq.compute.ComputeKernel kernel) {
+        // If CUDA not initialized, fall back to CPU processing (typed)
         if (!initialized) {
             return CompletableFuture.supplyAsync(() -> {
-                // Fall back to simple CPU parallel processing
                 var vectors = input.getVectors();
                 var results = new com.example.zeromq.core.DenseVector[vectors.length];
                 for (int i = 0; i < vectors.length; i++) {
@@ -173,8 +276,34 @@ public class CudaComputeEngine extends ComputeEngine {
             });
         }
 
+        // When virtual threads are enabled, use structured concurrency to orchestrate per-vector processing.
+        if (usingVirtualThreads) {
+            return CompletableFuture.supplyAsync(() -> {
+                var vectors = input.getVectors();
+                var results = new DenseVector[vectors.length];
+                try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
+                    java.util.List<java.util.concurrent.StructuredTaskScope.Subtask<Void>> subs = new java.util.ArrayList<>();
+                    for (int i = 0; i < vectors.length; i++) {
+                        final int idx = i;
+                        subs.add(scope.fork(() -> {
+                            float[] processed = kernel.execute(vectors[idx].getData(), 1, vectors[idx].getDimensions());
+                            results[idx] = new DenseVector(processed);
+                            return null;
+                        }));
+                    }
+
+                    scope.join();
+                    scope.throwIfFailed();
+                    return new BatchVector(results);
+                } catch (Exception e) {
+                    log.error("Virtual-thread batchProcess in CudaComputeEngine failed: {}", e.getMessage(), e);
+                    throw new RuntimeException(e);
+                }
+            }, gpuExecutor);
+        }
+
+        // Default: use existing executor-based CPU fallback processing (GPU batch kernels require custom implementation)
         return CompletableFuture.supplyAsync(() -> {
-            // For now, fallback to CPU processing; GPU batch kernels require custom implementation
             var vectors = input.getVectors();
             var results = new DenseVector[vectors.length];
             for (int i = 0; i < vectors.length; i++) {

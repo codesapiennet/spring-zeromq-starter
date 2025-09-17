@@ -4,6 +4,7 @@ import com.example.zeromq.compute.ComputeEngine;
 import com.example.zeromq.core.DenseVector;
 import com.example.zeromq.core.BatchVector;
 import com.example.zeromq.compute.ComputeKernel;
+import com.example.zeromq.autoconfig.ZeroMqProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -29,17 +30,59 @@ public class OptimizedCpuComputeEngine extends ComputeEngine {
 
     private final ForkJoinPool computePool;
     private static final VectorSpecies<Float> SPECIES = FloatVector.SPECIES_PREFERRED;
+    private final boolean usingVirtualThreads;
 
-    public OptimizedCpuComputeEngine() {
+    public OptimizedCpuComputeEngine(ZeroMqProperties properties) {
         int optimalThreads = Math.min(Runtime.getRuntime().availableProcessors(), ForkJoinPool.getCommonPoolParallelism());
         this.computePool = new ForkJoinPool(Math.max(1, optimalThreads));
         this.preferredBackend = ComputeBackend.CPU_VECTORIZED;
-        log.info("Initialized OptimizedCpuComputeEngine with {} threads and vector species {}", optimalThreads, SPECIES.length());
+        boolean useVirtual = false;
+        try {
+            useVirtual = properties != null && properties.getCompute() != null
+                    && properties.getCompute().getMultithreaded() != null
+                    && properties.getCompute().getMultithreaded().isUseVirtualThreads();
+        } catch (Exception ignored) {}
+        this.usingVirtualThreads = useVirtual;
+        log.info("Initialized OptimizedCpuComputeEngine with {} threads and vector species {} (useVirtualThreads={})",
+                optimalThreads, SPECIES.length(), usingVirtualThreads);
     }
 
     @Override
     public CompletableFuture<Float> dotProduct(DenseVector v1, DenseVector v2) {
-        return CompletableFuture.supplyAsync(() -> computePool.submit(new VectorizedDotProduct(v1.getData(), v2.getData(), 0, v1.getDimensions())).join());
+        return CompletableFuture.supplyAsync(() -> {
+            if (!usingVirtualThreads) {
+                return computePool.submit(new VectorizedDotProduct(v1.getData(), v2.getData(), 0, v1.getDimensions())).join();
+            }
+
+            int n = v1.getDimensions();
+            int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
+            try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure<Float>()) {
+                var subs = new java.util.ArrayList<java.util.concurrent.StructuredTaskScope.Subtask<Float>>();
+                int chunk = (n + partitions - 1) / partitions;
+                for (int p = 0; p < partitions; p++) {
+                    int start = p * chunk;
+                    int end = Math.min(n, start + chunk);
+                    if (start >= end) break;
+                    subs.add(scope.fork(() -> {
+                        double sum = 0.0;
+                        float[] a = v1.getData();
+                        float[] b = v2.getData();
+                        for (int i = start; i < end; i++) sum += (double) a[i] * b[i];
+                        return (float) sum;
+                    }));
+                }
+
+                scope.join();
+                scope.throwIfFailed();
+
+                double total = 0.0;
+                for (var s : subs) total += s.resultNow();
+                return (float) total;
+            } catch (Exception e) {
+                log.error("Virtual-thread dotProduct failed: {}", e.getMessage(), e);
+                throw new RuntimeException(e);
+            }
+        }, computePool);
     }
 
     @Override
@@ -63,47 +106,145 @@ public class OptimizedCpuComputeEngine extends ComputeEngine {
                 return new DenseVector(result);
             }
 
-            int i = 0;
-            int upperBound = SPECIES.loopBound(length);
+            if (!usingVirtualThreads) {
+                int i = 0;
+                int upperBound = SPECIES.loopBound(length);
 
-            for (; i < upperBound; i += SPECIES.length()) {
-                var va = FloatVector.fromArray(SPECIES, data1, i);
-                var vb = FloatVector.fromArray(SPECIES, data2, i);
-                FloatVector vc;
-                switch (op) {
-                    case ADD -> vc = va.add(vb);
-                    case SUBTRACT -> vc = va.sub(vb);
-                    case MULTIPLY -> vc = va.mul(vb);
-                    case DIVIDE -> vc = va.div(vb);
-                    case RELU -> vc = va.max(FloatVector.broadcast(SPECIES, 0.0f));
-                    default -> throw new UnsupportedOperationException("Operation not implemented: " + op);
-                }
-                vc.intoArray(result, i);
-            }
-
-            for (; i < length; i++) {
-                result[i] = switch (op) {
-                    case ADD -> data1[i] + data2[i];
-                    case SUBTRACT -> data1[i] - data2[i];
-                    case MULTIPLY -> data1[i] * data2[i];
-                    case DIVIDE -> {
-                        float denom = data2[i];
-                        yield denom == 0.0f ? Float.NaN : data1[i] / denom;
+                for (; i < upperBound; i += SPECIES.length()) {
+                    var va = FloatVector.fromArray(SPECIES, data1, i);
+                    var vb = FloatVector.fromArray(SPECIES, data2, i);
+                    FloatVector vc;
+                    switch (op) {
+                        case ADD -> vc = va.add(vb);
+                        case SUBTRACT -> vc = va.sub(vb);
+                        case MULTIPLY -> vc = va.mul(vb);
+                        case DIVIDE -> vc = va.div(vb);
+                        case RELU -> vc = va.max(FloatVector.broadcast(SPECIES, 0.0f));
+                        default -> throw new UnsupportedOperationException("Operation not implemented: " + op);
                     }
-                    case RELU -> Math.max(0.0f, data1[i]);
-                    case SIGMOID -> (float) (1.0 / (1.0 + Math.exp(-data1[i])));
-                    case TANH -> (float) Math.tanh(data1[i]);
-                    default -> throw new UnsupportedOperationException("Operation not implemented: " + op);
-                };
+                    vc.intoArray(result, i);
+                }
+
+                for (int j = (SPECIES.loopBound(length)); j < length; j++) {
+                    result[j] = switch (op) {
+                        case ADD -> data1[j] + data2[j];
+                        case SUBTRACT -> data1[j] - data2[j];
+                        case MULTIPLY -> data1[j] * data2[j];
+                        case DIVIDE -> {
+                            float denom = data2[j];
+                            yield denom == 0.0f ? Float.NaN : data1[j] / denom;
+                        }
+                        case RELU -> Math.max(0.0f, data1[j]);
+                        case SIGMOID -> (float) (1.0 / (1.0 + Math.exp(-data1[j])));
+                        case TANH -> (float) Math.tanh(data1[j]);
+                        default -> throw new UnsupportedOperationException("Operation not implemented: " + op);
+                    };
+                }
+
+                return new DenseVector(result);
             }
 
-            return new DenseVector(result);
+            // Virtual-thread partitioned execution using structured concurrency
+            int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
+            int chunk = (length + partitions - 1) / partitions;
+            try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
+                var subs = new java.util.ArrayList<java.util.concurrent.StructuredTaskScope.Subtask<Void>>();
+                for (int p = 0; p < partitions; p++) {
+                    int start = p * chunk;
+                    int end = Math.min(length, start + chunk);
+                    if (start >= end) break;
+                    subs.add(scope.fork(() -> {
+                        int i = start;
+                        int upper = Math.min(end, SPECIES.loopBound(end));
+                        // process SIMD within chunk
+                        for (; i < upper; i += SPECIES.length()) {
+                            var va = FloatVector.fromArray(SPECIES, data1, i);
+                            var vb = FloatVector.fromArray(SPECIES, data2, i);
+                            FloatVector vc;
+                            switch (op) {
+                                case ADD -> vc = va.add(vb);
+                                case SUBTRACT -> vc = va.sub(vb);
+                                case MULTIPLY -> vc = va.mul(vb);
+                                case DIVIDE -> vc = va.div(vb);
+                                case RELU -> vc = va.max(FloatVector.broadcast(SPECIES, 0.0f));
+                                default -> throw new UnsupportedOperationException("Operation not implemented: " + op);
+                            }
+                            vc.intoArray(result, i);
+                        }
+                        for (; i < end; i++) {
+                            result[i] = switch (op) {
+                                case ADD -> data1[i] + data2[i];
+                                case SUBTRACT -> data1[i] - data2[i];
+                                case MULTIPLY -> data1[i] * data2[i];
+                                case DIVIDE -> {
+                                    float denom = data2[i];
+                                    yield denom == 0.0f ? Float.NaN : data1[i] / denom;
+                                }
+                                case RELU -> Math.max(0.0f, data1[i]);
+                                case SIGMOID -> (float) (1.0 / (1.0 + Math.exp(-data1[i])));
+                                case TANH -> (float) Math.tanh(data1[i]);
+                                default -> throw new UnsupportedOperationException("Operation not implemented: " + op);
+                            };
+                        }
+                        return null;
+                    }));
+                }
+
+                scope.join();
+                scope.throwIfFailed();
+                return new DenseVector(result);
+            } catch (Exception e) {
+                log.error("Virtual-thread elementwiseOperation failed: {}", e.getMessage(), e);
+                throw new RuntimeException(e);
+            }
         }, computePool);
     }
 
     @Override
     public CompletableFuture<DenseVector> matrixVectorMultiply(float[][] matrix, DenseVector vector) {
-        return CompletableFuture.supplyAsync(() -> computePool.submit(new ParallelMatrixVectorMultiply(matrix, vector.getData(), 0, matrix.length)).join(), computePool);
+        return CompletableFuture.supplyAsync(() -> {
+            if (!usingVirtualThreads) {
+                return computePool.submit(new ParallelMatrixVectorMultiply(matrix, vector.getData(), 0, matrix.length)).join();
+            }
+
+            int rows = matrix.length;
+            int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
+            int chunk = (rows + partitions - 1) / partitions;
+            float[] result = new float[rows];
+            try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
+                var subs = new java.util.ArrayList<java.util.concurrent.StructuredTaskScope.Subtask<Void>>();
+                for (int p = 0; p < partitions; p++) {
+                    int start = p * chunk;
+                    int end = Math.min(rows, start + chunk);
+                    if (start >= end) break;
+                    subs.add(scope.fork(() -> {
+                        for (int i = start; i < end; i++) {
+                            float sum = 0.0f;
+                            float[] row = matrix[i];
+                            int j = 0;
+                            int upperBound = SPECIES.loopBound(row.length);
+                            FloatVector vsum = FloatVector.zero(SPECIES);
+                            for (; j < upperBound; j += SPECIES.length()) {
+                                var vr = FloatVector.fromArray(SPECIES, row, j);
+                                var vv = FloatVector.fromArray(SPECIES, vector.getData(), j);
+                                vsum = vr.fma(vv, vsum);
+                            }
+                            sum += vsum.reduceLanes(VectorOperators.ADD);
+                            for (; j < row.length; j++) sum += row[j] * vector.getData()[j];
+                            result[i] = sum;
+                        }
+                        return null;
+                    }));
+                }
+
+                scope.join();
+                scope.throwIfFailed();
+                return new DenseVector(result);
+            } catch (Exception e) {
+                log.error("Virtual-thread matrixVectorMultiply failed: {}", e.getMessage(), e);
+                throw new RuntimeException(e);
+            }
+        }, computePool);
     }
 
     @Override
@@ -112,12 +253,32 @@ public class OptimizedCpuComputeEngine extends ComputeEngine {
             DenseVector[] vectors = input.getVectors();
             DenseVector[] results = new DenseVector[vectors.length];
 
-            IntStream.range(0, vectors.length).parallel().forEach(i -> {
-                float[] processed = kernel.execute(vectors[i].getData(), 1, vectors[i].getDimensions());
-                results[i] = new DenseVector(processed);
-            });
+            if (!usingVirtualThreads) {
+                IntStream.range(0, vectors.length).parallel().forEach(i -> {
+                    float[] processed = kernel.execute(vectors[i].getData(), 1, vectors[i].getDimensions());
+                    results[i] = new DenseVector(processed);
+                });
+                return new BatchVector(results);
+            }
 
-            return new BatchVector(results);
+            try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
+                var subs = new java.util.ArrayList<java.util.concurrent.StructuredTaskScope.Subtask<Void>>();
+                for (int i = 0; i < vectors.length; i++) {
+                    final int idx = i;
+                    subs.add(scope.fork(() -> {
+                        float[] processed = kernel.execute(vectors[idx].getData(), 1, vectors[idx].getDimensions());
+                        results[idx] = new DenseVector(processed);
+                        return null;
+                    }));
+                }
+
+                scope.join();
+                scope.throwIfFailed();
+                return new BatchVector(results);
+            } catch (Exception e) {
+                log.error("Virtual-thread batchProcess failed: {}", e.getMessage(), e);
+                throw new RuntimeException(e);
+            }
         }, computePool);
     }
 
@@ -145,11 +306,36 @@ public class OptimizedCpuComputeEngine extends ComputeEngine {
 
     @Override
     public CompletableFuture<Float> cosineSimilarity(DenseVector v1, DenseVector v2) {
-        return dotProduct(v1, v2).thenCombine(CompletableFuture.supplyAsync(() -> {
-            double n1 = 0.0;
-            for (float f : v1.getData()) n1 += (double) f * f;
-            return Math.sqrt(n1);
-        }, computePool), (dot, norm1) -> (float) (dot / (norm1 * computeNorm(v2))));
+        if (!usingVirtualThreads) {
+            return dotProduct(v1, v2).thenCombine(CompletableFuture.supplyAsync(() -> {
+                double n1 = 0.0;
+                for (float f : v1.getData()) n1 += (double) f * f;
+                return Math.sqrt(n1);
+            }, computePool), (dot, norm1) -> (float) (dot / (norm1 * computeNorm(v2))));
+        }
+
+        return CompletableFuture.supplyAsync(() -> {
+            try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
+                var dot = scope.fork(() -> dotProduct(v1, v2).join());
+                var n1 = scope.fork(() -> {
+                    double s = 0.0;
+                    for (float f : v1.getData()) s += (double) f * f;
+                    return Math.sqrt(s);
+                });
+                var n2 = scope.fork(() -> computeNorm(v2));
+
+                scope.join();
+                scope.throwIfFailed();
+
+                float dotVal = dot.resultNow();
+                double norm1 = n1.resultNow();
+                double norm2 = n2.resultNow();
+                return (float) (dotVal / (norm1 * norm2));
+            } catch (Exception e) {
+                log.error("Virtual-thread cosineSimilarity failed: {}", e.getMessage(), e);
+                throw new RuntimeException(e);
+            }
+        }, computePool);
     }
 
     private double computeNorm(DenseVector v) {

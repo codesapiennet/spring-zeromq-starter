@@ -74,6 +74,9 @@ spring:
       max-size: 10
       max-idle-time: PT5M
       validation-timeout: PT1S
+    compute:
+      multithreaded:
+        use-virtual-threads: false
 
 ---
 # Development profile - relaxed security, verbose logging

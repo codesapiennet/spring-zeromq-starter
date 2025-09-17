@@ -71,7 +71,7 @@
 - [x] Implement CPU compute:
   - [x] `OptimizedCpuComputeEngine.java`
   - [ ] `VectorizedOperations.java`
-  - [ ] `MultiThreadedEngine.java`
+  - [x] `MultiThreadedEngine.java`
 - [ ] Implement GPU compute:
   - [x] `CudaComputeEngine.java`
   - [ ] `OpenCLComputeEngine.java`
@@ -90,7 +90,7 @@
 - [x] Implement worker management:
   - [x] `GpuComputeWorker.java`
   - [x] `CpuComputeWorker.java`
-  - [ ] `WorkerManager.java`
+  - [x] `WorkerManager.java`
 - [ ] Create CUDA/OpenCL kernel files
 
 ## Starter Module (`zeromq-spring-boot-starter`)

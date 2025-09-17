@@ -76,6 +76,13 @@ public class ZeroMqProperties {
     @NotNull
     private Pool pool = new Pool();
 
+    /**
+     * Compute-related configuration.
+     */
+    @Valid
+    @NotNull
+    private Compute compute = new Compute();
+
     // Getters and setters
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
@@ -97,6 +104,9 @@ public class ZeroMqProperties {
 
     public Pool getPool() { return pool; }
     public void setPool(Pool pool) { this.pool = pool; }
+
+    public Compute getCompute() { return compute; }
+    public void setCompute(Compute compute) { this.compute = compute; }
 
     /**
      * Security configuration properties.
@@ -462,5 +472,27 @@ public class ZeroMqProperties {
 
         public Duration getValidationTimeout() { return validationTimeout; }
         public void setValidationTimeout(Duration validationTimeout) { this.validationTimeout = validationTimeout; }
+    }
+
+    /**
+     * Compute-related configuration.
+     */
+    public static class Compute {
+        @Valid
+        @NotNull
+        private Multithreaded multithreaded = new Multithreaded();
+
+        public Multithreaded getMultithreaded() { return multithreaded; }
+        public void setMultithreaded(Multithreaded multithreaded) { this.multithreaded = multithreaded; }
+
+        public static class Multithreaded {
+            /**
+             * When true, use virtual threads for multithreaded executor. Default=false.
+             */
+            private boolean useVirtualThreads = false;
+
+            public boolean isUseVirtualThreads() { return useVirtualThreads; }
+            public void setUseVirtualThreads(boolean useVirtualThreads) { this.useVirtualThreads = useVirtualThreads; }
+        }
     }
 } 
