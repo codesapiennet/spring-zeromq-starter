@@ -50,6 +50,19 @@ public class OptimizedCpuComputeEngine extends ComputeEngine {
             int length = data1.length;
             float[] result = new float[length];
 
+            // For non-linear ops that require math functions, use a parallel scalar implementation
+            if (op == Operation.SIGMOID) {
+                IntStream.range(0, length).parallel().forEach(i ->
+                    result[i] = (float) (1.0 / (1.0 + Math.exp(-data1[i])))
+                );
+                return new DenseVector(result);
+            } else if (op == Operation.TANH) {
+                IntStream.range(0, length).parallel().forEach(i ->
+                    result[i] = (float) Math.tanh(data1[i])
+                );
+                return new DenseVector(result);
+            }
+
             int i = 0;
             int upperBound = SPECIES.loopBound(length);
 
@@ -73,8 +86,13 @@ public class OptimizedCpuComputeEngine extends ComputeEngine {
                     case ADD -> data1[i] + data2[i];
                     case SUBTRACT -> data1[i] - data2[i];
                     case MULTIPLY -> data1[i] * data2[i];
-                    case DIVIDE -> data1[i] / data2[i];
+                    case DIVIDE -> {
+                        float denom = data2[i];
+                        yield denom == 0.0f ? Float.NaN : data1[i] / denom;
+                    }
                     case RELU -> Math.max(0.0f, data1[i]);
+                    case SIGMOID -> (float) (1.0 / (1.0 + Math.exp(-data1[i])));
+                    case TANH -> (float) Math.tanh(data1[i]);
                     default -> throw new UnsupportedOperationException("Operation not implemented: " + op);
                 };
             }

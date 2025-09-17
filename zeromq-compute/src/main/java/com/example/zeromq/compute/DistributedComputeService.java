@@ -33,9 +33,8 @@ public class DistributedComputeService {
     @PostConstruct
     private void setupResultHandlers() {
         // Subscribe to compute results published by workers
-        zeroMqTemplate.subscribe("tcp://localhost:5590", "compute.result", (topic, rawResult) -> {
+        zeroMqTemplate.subscribe("tcp://localhost:5590", "compute.result", ComputeResult.class, result -> {
             try {
-                ComputeResult result = jsonConverter.fromBytes(rawResult, ComputeResult.class);
                 CompletableFuture<Object> future = pendingTasks.remove(result.getTaskId());
                 if (future != null) {
                     if (result.isSuccess()) {
