@@ -47,15 +47,14 @@ public class LocalComputeExample {
 
         CountDownLatch latch = new CountDownLatch(1);
 
-        zeroMqTemplate.subscribe("tcp://localhost:5590", "compute.result", (topic, raw) -> {
+        zeroMqTemplate.subscribe("tcp://localhost:5590", "compute.result", com.example.zeromq.compute.ComputeResult.class, result -> {
             try {
-                var result = new com.example.zeromq.core.JacksonMessageConverter().fromBytes(raw, com.example.zeromq.compute.ComputeResult.class);
                 if (taskId.equals(result.getTaskId())) {
                     log.info("Received compute result for task {}: success={}, data={}", taskId, result.isSuccess(), result.getData());
                     latch.countDown();
                 }
             } catch (Exception e) {
-                log.error("Failed to deserialize compute result: {}", e.getMessage(), e);
+                log.error("Failed to handle compute result: {}", e.getMessage(), e);
             }
         });
 

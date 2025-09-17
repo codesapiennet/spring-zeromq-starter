@@ -4,7 +4,6 @@ import com.example.zeromq.autoconfig.ZeroMqTemplate;
 import com.example.zeromq.compute.ComputeResult;
 import com.example.zeromq.compute.ComputeTask;
 import com.example.zeromq.compute.gpu.CudaComputeEngine;
-import com.example.zeromq.core.JacksonMessageConverter;
 import com.example.zeromq.core.DenseVector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +25,6 @@ public class GpuComputeWorker implements CommandLineRunner {
 
     private final ZeroMqTemplate zeroMqTemplate;
     private final CudaComputeEngine computeEngine;
-    private final JacksonMessageConverter jsonConverter = new JacksonMessageConverter();
 
     public GpuComputeWorker(ZeroMqTemplate zeroMqTemplate, CudaComputeEngine computeEngine) {
         this.zeroMqTemplate = zeroMqTemplate;
@@ -37,24 +35,21 @@ public class GpuComputeWorker implements CommandLineRunner {
     public void run(String... args) {
         log.info("Starting GPU compute worker. GPU available: {}", computeEngine.isGpuAvailable());
 
-        // Pull matrix-vector multiply tasks (task publisher binds to tcp://*:5580)
-        zeroMqTemplate.pull("tcp://localhost:5580", rawTask -> {
+        // Pull matrix-vector multiply tasks (typed)
+        zeroMqTemplate.pull("tcp://localhost:5580", ComputeTask.class, task -> {
             try {
-                ComputeTask task = jsonConverter.fromBytes(rawTask, ComputeTask.class);
                 processComputeTask(task);
             } catch (Exception e) {
-                log.error("Failed to deserialize/handle compute task: {}", e.getMessage(), e);
+                log.error("Failed to handle compute task: {}", e.getMessage(), e);
             }
         });
 
-        // Pull ML inference tasks (publisher may push MLInference tasks to tcp://*:5581)
-        zeroMqTemplate.pull("tcp://localhost:5581", rawTask -> {
+        // Pull ML inference tasks (typed)
+        zeroMqTemplate.pull("tcp://localhost:5581", ComputeTask.class, task -> {
             try {
-                // Try to parse as ComputeTask for ML inference as well (lightweight approach)
-                ComputeTask task = jsonConverter.fromBytes(rawTask, ComputeTask.class);
                 processMLInferenceTask(task);
             } catch (Exception e) {
-                log.error("Failed to deserialize/handle ML task: {}", e.getMessage(), e);
+                log.error("Failed to handle ML task: {}", e.getMessage(), e);
             }
         });
 

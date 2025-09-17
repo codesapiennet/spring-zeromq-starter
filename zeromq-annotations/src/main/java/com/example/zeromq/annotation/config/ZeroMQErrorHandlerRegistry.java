@@ -6,6 +6,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
+import com.example.zeromq.annotation.EnableZeroMQ;
+import java.util.Objects;
 
 /**
  * Registry for custom error handlers in ZeroMQ annotation processing.
@@ -265,6 +267,33 @@ public class ZeroMQErrorHandlerRegistry {
             public String getErrorMessage() { return errorMessage; }
             public long getFailureTimestamp() { return failureTimestamp; }
             public String getCorrelationId() { return correlationId; }
+        }
+    }
+
+    /**
+     * Resolve a handler for the given ErrorHandling strategy. If a custom handler is
+     * configured in the registry with the same name, it will take precedence for CUSTOM.
+     * Returns a non-null handler for known strategies; for DEAD_LETTER without a configured
+     * sender, a safe no-op handler is returned that logs the missing configuration.
+     */
+    public ErrorHandler resolveHandler(EnableZeroMQ.ErrorHandling strategy) {
+        Objects.requireNonNull(strategy, "ErrorHandling strategy must not be null");
+        switch (strategy) {
+            case LOG_AND_CONTINUE:
+                return LOG_AND_CONTINUE;
+            case LOG_AND_STOP:
+                return LOG_AND_STOP;
+            case IGNORE:
+                return IGNORE;
+            case RETRY:
+                // default retry: 3 attempts, 1000ms delay
+                return new RetryErrorHandler(3, 1000);
+            case DEAD_LETTER:
+                // No sender configured by default - return handler that logs missing DLQ
+                return (context, error) -> log.warn("Dead-letter handling requested but no DLQ sender configured for {}", context);
+            case CUSTOM:
+            default:
+                return LOG_AND_CONTINUE;
         }
     }
 } 

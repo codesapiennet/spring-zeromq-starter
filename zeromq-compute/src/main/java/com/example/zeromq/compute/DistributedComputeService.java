@@ -3,7 +3,6 @@ package com.example.zeromq.compute;
 import com.example.zeromq.autoconfig.ZeroMqTemplate;
 import com.example.zeromq.core.DenseVector;
 import com.example.zeromq.core.BatchVector;
-import com.example.zeromq.core.JacksonMessageConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -24,8 +23,8 @@ public class DistributedComputeService {
 
     private final ZeroMqTemplate zeroMqTemplate;
     private final Map<String, CompletableFuture<Object>> pendingTasks = new ConcurrentHashMap<>();
-    private final JacksonMessageConverter jsonConverter = new JacksonMessageConverter();
-
+    
+    
     public DistributedComputeService(ZeroMqTemplate zeroMqTemplate) {
         this.zeroMqTemplate = zeroMqTemplate;
     }
@@ -65,7 +64,6 @@ public class DistributedComputeService {
                 .build();
 
         try {
-            byte[] payload = jsonConverter.toBytes(task);
             zeroMqTemplate.push("tcp://*:5580", task);
         } catch (Exception e) {
             pendingTasks.remove(taskId);
