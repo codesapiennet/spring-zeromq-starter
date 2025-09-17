@@ -91,7 +91,7 @@
   - [x] `GpuComputeWorker.java`
   - [x] `CpuComputeWorker.java`
   - [x] `WorkerManager.java`
-- [ ] Create CUDA/OpenCL kernel files
+- [x] Create CUDA/OpenCL kernel files
 
 ## Starter Module (`zeromq-spring-boot-starter`)
 - [x] Create `zeromq-spring-boot-starter/pom.xml`
@@ -154,11 +154,11 @@
 - [x] Create `META-INF/spring.factories`
 
 ## Completion Status
-Total Tasks: 58/95 (61.0%)
+Total Tasks: 59/95 (62.1%)
 Core Module: 16/16 (100% ✅ COMPLETE!)
 Auto-config Module: 12/12 (100% ✅ COMPLETE!)
 Annotations Module: 18/18 (100% ✅ COMPLETE!)
-Compute Module: 10/25
+Compute Module: 11/25
 Starter Module: 2/2
 Examples Module: 0/9
 Sample App: 0/8
