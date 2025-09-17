@@ -395,7 +395,6 @@ public final class BatchVector implements Iterable<DenseVector> {
         DenseVector[] combinedVectors = new DenseVector[this.batchSize + other.batchSize];
         System.arraycopy(this.vectors, 0, combinedVectors, 0, this.batchSize);
         System.arraycopy(other.vectors, 0, combinedVectors, this.batchSize, other.batchSize);
-        
         return new BatchVector(combinedVectors);
     }
 

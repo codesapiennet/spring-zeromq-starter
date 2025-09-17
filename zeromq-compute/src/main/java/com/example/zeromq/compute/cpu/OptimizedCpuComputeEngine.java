@@ -428,10 +428,11 @@ public class OptimizedCpuComputeEngine extends ComputeEngine {
                 var lowerResult = lower.compute();
                 var upperResult = upper.join();
 
-                int totalLen = upperResult.getDimensions() + lowerResult.getDimensions();
-                float[] combined = new float[totalLen];
-                System.arraycopy(upperResult.getData(), 0, combined, 0, upperResult.getDimensions());
-                System.arraycopy(lowerResult.getData(), 0, combined, upperResult.getDimensions(), lowerResult.getDimensions());
+                float[] upperData = upperResult.getData();
+                float[] lowerData = lowerResult.getData();
+                float[] combined = new float[upperData.length + lowerData.length];
+                System.arraycopy(upperData, 0, combined, 0, upperData.length);
+                System.arraycopy(lowerData, 0, combined, upperData.length, lowerData.length);
                 return new DenseVector(combined);
             }
         }

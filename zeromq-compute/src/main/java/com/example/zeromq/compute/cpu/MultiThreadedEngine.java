@@ -96,18 +96,28 @@ public class MultiThreadedEngine extends ComputeEngine {
                 scope.join();
                 scope.throwIfFailed();
 
-                int offset = 0;
+                // Collect sub-results and preallocate a single output buffer to avoid many intermediate arrays
+                java.util.List<float[]> parts = new java.util.ArrayList<>(subs.size());
+                int totalLen = 0;
                 for (var sub : subs) {
                     try {
                         DenseVector dv = sub.get();
-                        System.arraycopy(dv.getData(), 0, result, offset, dv.getDimensions());
-                        offset += dv.getDimensions();
+                        float[] data = dv.getData();
+                        parts.add(data);
+                        totalLen += dv.getDimensions();
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
                 }
 
-                return new DenseVector(result);
+                float[] accumulated = new float[totalLen];
+                int offset = 0;
+                for (float[] part : parts) {
+                    System.arraycopy(part, 0, accumulated, offset, part.length);
+                    offset += part.length;
+                }
+
+                return new DenseVector(accumulated);
             } catch (Exception e) {
                 log.error("Virtual-thread matrixVectorMultiply failed: {}", e.getMessage(), e);
                 throw new RuntimeException(e);

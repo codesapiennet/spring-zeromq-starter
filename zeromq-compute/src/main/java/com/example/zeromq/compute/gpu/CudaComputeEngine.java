@@ -126,7 +126,11 @@ public class CudaComputeEngine extends ComputeEngine {
             // Flatten matrix
             float[] flatMatrix = new float[rows * cols];
             for (int i = 0; i < rows; i++) {
-                System.arraycopy(matrix[i], 0, flatMatrix, i * cols, cols);
+                float[] row = matrix[i];
+                int base = i * cols;
+                for (int j = 0; j < cols; j++) {
+                    flatMatrix[base + j] = row[j];
+                }
             }
 
             CUdeviceptr dMatrix = new CUdeviceptr();
