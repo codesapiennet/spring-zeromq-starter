@@ -98,9 +98,13 @@ public class MultiThreadedEngine extends ComputeEngine {
 
                 int offset = 0;
                 for (var sub : subs) {
-                    DenseVector dv = sub.resultNow();
-                    System.arraycopy(dv.getData(), 0, result, offset, dv.getDimensions());
-                    offset += dv.getDimensions();
+                    try {
+                        DenseVector dv = sub.get();
+                        System.arraycopy(dv.getData(), 0, result, offset, dv.getDimensions());
+                        offset += dv.getDimensions();
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
                 }
 
                 return new DenseVector(result);
@@ -130,8 +134,8 @@ public class MultiThreadedEngine extends ComputeEngine {
             }
 
             int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
-            try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure<Float>()) {
-                java.util.List<java.util.concurrent.StructuredTaskScope.Subtask<Float>> subs = new java.util.ArrayList<>();
+            try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
+                java.util.List<java.util.concurrent.StructuredTaskScope.Subtask<java.lang.Float>> subs = new java.util.ArrayList<>();
                 int chunk = (n + partitions - 1) / partitions;
                 for (int p = 0; p < partitions; p++) {
                     int start = p * chunk;
@@ -148,7 +152,13 @@ public class MultiThreadedEngine extends ComputeEngine {
                 scope.throwIfFailed();
 
                 double total = 0.0;
-                for (var s : subs) total += s.resultNow();
+                for (var s : subs) {
+                    try {
+                        total += s.get();
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
                 return (float) total;
             } catch (Exception e) {
                 log.error("Virtual-thread dotProduct failed: {}", e.getMessage(), e);
@@ -307,10 +317,14 @@ public class MultiThreadedEngine extends ComputeEngine {
                 scope.join();
                 scope.throwIfFailed();
 
-                float dotVal = dot.resultNow();
-                float n1Val = n1.resultNow();
-                float n2Val = n2.resultNow();
-                return dotVal / (n1Val * n2Val);
+                try {
+                    float dotVal = dot.get();
+                    float n1Val = n1.get();
+                    float n2Val = n2.get();
+                    return dotVal / (n1Val * n2Val);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             } catch (Exception e) {
                 log.error("Virtual-thread cosineSimilarity failed: {}", e.getMessage(), e);
                 throw new RuntimeException(e);

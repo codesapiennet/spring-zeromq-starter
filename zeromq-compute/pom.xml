@@ -24,19 +24,20 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- Optional GPU dependencies should be added by the consumer when needed -->
+        <!-- GPU dependencies required for CUDA-backed engine; versions are managed in the parent POM -->
+        <dependency>
+            <groupId>org.jcuda</groupId>
+            <artifactId>jcuda</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jcuda</groupId>
+            <artifactId>jcublas</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jocl</groupId>
+            <artifactId>jocl</artifactId>
+        </dependency>
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
+    
+    <!-- Intentionally no module-specific compiler configuration so pluginManagement in parent controls preview flags -->
 </project> 

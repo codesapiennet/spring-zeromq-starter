@@ -56,7 +56,7 @@ public class OptimizedCpuComputeEngine extends ComputeEngine {
 
             int n = v1.getDimensions();
             int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
-            try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure<Float>()) {
+            try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
                 var subs = new java.util.ArrayList<java.util.concurrent.StructuredTaskScope.Subtask<Float>>();
                 int chunk = (n + partitions - 1) / partitions;
                 for (int p = 0; p < partitions; p++) {
@@ -76,7 +76,13 @@ public class OptimizedCpuComputeEngine extends ComputeEngine {
                 scope.throwIfFailed();
 
                 double total = 0.0;
-                for (var s : subs) total += s.resultNow();
+                for (var s : subs) {
+                    try {
+                        total += s.get();
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
                 return (float) total;
             } catch (Exception e) {
                 log.error("Virtual-thread dotProduct failed: {}", e.getMessage(), e);
@@ -327,10 +333,14 @@ public class OptimizedCpuComputeEngine extends ComputeEngine {
                 scope.join();
                 scope.throwIfFailed();
 
-                float dotVal = dot.resultNow();
-                double norm1 = n1.resultNow();
-                double norm2 = n2.resultNow();
-                return (float) (dotVal / (norm1 * norm2));
+                try {
+                    float dotVal = dot.get();
+                    double norm1 = n1.get();
+                    double norm2 = n2.get();
+                    return (float) (dotVal / (norm1 * norm2));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             } catch (Exception e) {
                 log.error("Virtual-thread cosineSimilarity failed: {}", e.getMessage(), e);
                 throw new RuntimeException(e);

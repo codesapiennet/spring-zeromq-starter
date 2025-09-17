@@ -70,7 +70,7 @@
   - [x] `DistributedComputeService.java`
 - [x] Implement CPU compute:
   - [x] `OptimizedCpuComputeEngine.java`
-  - [ ] `VectorizedOperations.java`
+  - [x] `VectorizedOperations.java`
   - [x] `MultiThreadedEngine.java`
 - [ ] Implement GPU compute:
   - [x] `CudaComputeEngine.java`

@@ -14,6 +14,7 @@ import jcuda.driver.CUdevice;
 import jcuda.driver.CUdeviceptr;
 import jcuda.driver.JCudaDriver;
 import jcuda.Sizeof;
+import jcuda.Pointer;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -137,14 +138,14 @@ public class CudaComputeEngine extends ComputeEngine {
                 JCudaDriver.cuMemAlloc(dVector, (long) cols * Sizeof.FLOAT);
                 JCudaDriver.cuMemAlloc(dResult, (long) rows * Sizeof.FLOAT);
 
-                JCudaDriver.cuMemcpyHtoD(dMatrix, java.nio.ByteBuffer.wrap(toByteArray(flatMatrix)), (long) flatMatrix.length * Sizeof.FLOAT);
-                JCudaDriver.cuMemcpyHtoD(dVector, java.nio.ByteBuffer.wrap(toByteArray(vectorData)), (long) vectorData.length * Sizeof.FLOAT);
+                JCudaDriver.cuMemcpyHtoD(dMatrix, Pointer.to(flatMatrix), (long) flatMatrix.length * Sizeof.FLOAT);
+                JCudaDriver.cuMemcpyHtoD(dVector, Pointer.to(vectorData), (long) vectorData.length * Sizeof.FLOAT);
 
                 // Execute CUDA kernel: placeholder - in production use cuBLAS/cuBLASlt/cuBLASx
                 executeMatrixVectorKernel(dMatrix, dVector, dResult, rows, cols);
 
                 float[] result = new float[rows];
-                JCudaDriver.cuMemcpyDtoH(java.nio.ByteBuffer.wrap(toByteArray(result)), dResult, (long) rows * Sizeof.FLOAT);
+                JCudaDriver.cuMemcpyDtoH(Pointer.to(result), dResult, (long) rows * Sizeof.FLOAT);
 
                 // If kernel not implemented, fallback result may be zeros; detect and fallback if needed
                 boolean allZero = true;
@@ -351,6 +352,22 @@ public class CudaComputeEngine extends ComputeEngine {
         java.nio.ByteBuffer b = java.nio.ByteBuffer.allocate(floats.length * Float.BYTES).order(java.nio.ByteOrder.nativeOrder());
         for (float f : floats) b.putFloat(f);
         return b.array();
+    }
+
+    @Override
+    public CompletableFuture<Float> cosineSimilarity(DenseVector v1, DenseVector v2) {
+        // Provide a safe CPU fallback for cosine similarity; GPU implementation is out-of-scope here
+        return CompletableFuture.supplyAsync(() -> {
+            double dot = 0.0;
+            float[] a = v1.getData();
+            float[] b = v2.getData();
+            for (int i = 0; i < a.length; i++) dot += a[i] * b[i];
+            double n1 = 0.0, n2 = 0.0;
+            for (float f : a) n1 += (double) f * f;
+            for (float f : b) n2 += (double) f * f;
+            double denom = Math.sqrt(n1) * Math.sqrt(n2);
+            return denom == 0.0 ? 0.0f : (float) (dot / denom);
+        }, gpuExecutor);
     }
 
 } 

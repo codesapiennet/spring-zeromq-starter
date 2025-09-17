@@ -44,7 +44,7 @@ public final class ComputeTask {
 
     public int getVectorSize() {
         if (vector != null) return vector.getDimensions();
-        if (batchInputs != null) return batchInputs.getDimensions();
+        if (batchInputs != null) return batchInputs.getVectorDimensions();
         return 0;
     }
 
