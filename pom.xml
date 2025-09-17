@@ -31,9 +31,9 @@
     </modules>
 
     <properties>
-        <java.version>21</java.version>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <java.version>25</java.version>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         
@@ -162,7 +162,7 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.13.0</version>
                     <configuration>
-                        <release>21</release>
+                        <release>25</release>
                         <compilerArgs>
                             <arg>--enable-preview</arg>
                             <arg>--add-modules=jdk.incubator.vector</arg>
@@ -218,9 +218,10 @@
                     <artifactId>maven-javadoc-plugin</artifactId>
                     <version>3.6.3</version>
                     <configuration>
-                        <source>21</source>
+                        <source>25</source>
                         <additionalJOptions>
                             <additionalJOption>--enable-preview</additionalJOption>
+                            <additionalJOption>--add-modules=jdk.incubator.vector</additionalJOption>
                         </additionalJOptions>
                     </configuration>
                     <executions>

@@ -12,6 +12,11 @@
 
     <artifactId>zeromq-compute</artifactId>
 
+    <properties>
+        <!-- Skip Javadoc generation for this module to avoid javadoc errors for incubator modules -->
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.example</groupId>
