@@ -161,6 +161,11 @@ public class OptimizedCpuComputeEngine extends ComputeEngine {
     @Override
     public boolean isGpuAvailable() { return false; }
 
+    @Override
+    public ComputeStats getPerformanceStats() {
+        return new ComputeStats(false, computePool.getParallelism());
+    }
+
     /* ----- ForkJoin tasks ----- */
     private static class VectorizedDotProduct extends RecursiveTask<Float> {
         private final float[] a, b;

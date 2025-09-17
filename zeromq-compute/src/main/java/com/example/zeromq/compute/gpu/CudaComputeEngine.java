@@ -188,6 +188,11 @@ public class CudaComputeEngine extends ComputeEngine {
     @Override
     public boolean isGpuAvailable() { return initialized; }
 
+    @Override
+    public ComputeStats getPerformanceStats() {
+        return new ComputeStats(initialized, initialized ? 1 : 0);
+    }
+
     public int getDeviceId() { return deviceId; }
 
     public String getDeviceName() { return deviceName; }
