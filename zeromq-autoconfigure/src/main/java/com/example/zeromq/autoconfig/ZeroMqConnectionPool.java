@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Spring ZeroMQ Team
  * @since 0.1.0
  */
+@SuppressWarnings("deprecation")
 public class ZeroMqConnectionPool implements InitializingBean, DisposableBean {
 
     private static final Logger log = LoggerFactory.getLogger(ZeroMqConnectionPool.class);

@@ -20,6 +20,7 @@ import java.util.Set;
  *
  * <p>Designed to be started from auto-configuration when CURVE is enabled.
  */
+@SuppressWarnings("deprecation")
 public class ZmqZapAuthenticator {
 
     private static final Logger log = LoggerFactory.getLogger(ZmqZapAuthenticator.class);

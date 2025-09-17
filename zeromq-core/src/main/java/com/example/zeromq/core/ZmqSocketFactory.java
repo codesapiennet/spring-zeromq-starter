@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Component
 @ConditionalOnBean(ZmqContextHolder.class)
+@SuppressWarnings("deprecation")
 public class ZmqSocketFactory {
 
     private static final Logger log = LoggerFactory.getLogger(ZmqSocketFactory.class);

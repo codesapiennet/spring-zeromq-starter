@@ -50,6 +50,7 @@ public final class ConcurrencyUtils {
      * @return list of results in the same order as {@code tasks}
      * @throws Exception first task exception, {@link TimeoutException} on timeout, or {@link InterruptedException}
      */
+    @SuppressWarnings("unchecked")
     public static <T> List<T> invokeAllCancelOnFailure(ExecutorService executor,
                                                        List<Callable<T>> tasks,
                                                        long timeout,

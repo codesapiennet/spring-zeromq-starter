@@ -31,6 +31,7 @@ import java.util.function.Consumer;
  * @author Spring ZeroMQ Team
  * @since 0.1.0
  */
+@SuppressWarnings("deprecation")
 public class ZeroMqTemplate {
 
     private static final Logger log = LoggerFactory.getLogger(ZeroMqTemplate.class);
