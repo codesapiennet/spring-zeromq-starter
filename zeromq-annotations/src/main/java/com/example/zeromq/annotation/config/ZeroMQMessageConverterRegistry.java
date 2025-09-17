@@ -122,7 +122,7 @@ public class ZeroMQMessageConverterRegistry {
         MessageConverter found = null;
         synchronized (converters) {
             for (MessageConverter converter : converters) {
-                if (converter.canConvert(messageType)) {
+                if (converter.supports(messageType)) {
                     found = converter;
                     break;
                 }

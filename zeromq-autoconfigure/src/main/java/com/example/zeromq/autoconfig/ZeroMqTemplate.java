@@ -193,7 +193,7 @@ public class ZeroMqTemplate {
                         "correlationId={} subscriptionId={}", correlationId, subscriptionId);
                 
                 // Message receiving loop
-                while (!Thread.currentThread().isInterrupted() && !socket.isClosed()) {
+                while (!Thread.currentThread().isInterrupted()) {
                     try {
                         String receivedTopic = socket.recvStr(ZMQ.DONTWAIT);
                         if (receivedTopic != null) {
@@ -443,7 +443,7 @@ public class ZeroMqTemplate {
                         "correlationId={} pullerId={} endpoint={}", 
                         correlationId, pullerId, endpoint);
                 
-                while (!Thread.currentThread().isInterrupted() && !socket.isClosed()) {
+                while (!Thread.currentThread().isInterrupted()) {
                     try {
                         byte[] data = socket.recv(ZMQ.DONTWAIT);
                         if (data != null) {

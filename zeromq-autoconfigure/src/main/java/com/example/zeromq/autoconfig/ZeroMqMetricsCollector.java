@@ -139,15 +139,15 @@ public class ZeroMqMetricsCollector implements MeterBinder, AutoCloseable {
                 .register(registry);
         
         // Gauge metrics
-        activeSockets = Gauge.builder("zeromq.sockets.active")
+        activeSockets = Gauge.builder("zeromq.sockets.active", this, ZeroMqMetricsCollector::getActiveSocketCount)
                 .description("Current number of active ZeroMQ sockets")
                 .tag("component", "zeromq")
-                .register(registry, this, ZeroMqMetricsCollector::getActiveSocketCount);
+                .register(registry);
         
-        memoryUsage = Gauge.builder("zeromq.memory.usage.bytes")
+        memoryUsage = Gauge.builder("zeromq.memory.usage.bytes", this, ZeroMqMetricsCollector::getEstimatedMemoryUsage)
                 .description("Estimated ZeroMQ memory usage")
                 .tag("component", "zeromq")
-                .register(registry, this, ZeroMqMetricsCollector::getEstimatedMemoryUsage);
+                .register(registry);
         
         // Socket type specific metrics
         registerSocketTypeMetrics(registry);
@@ -178,22 +178,22 @@ public class ZeroMqMetricsCollector implements MeterBinder, AutoCloseable {
      */
     private void registerPerformanceMetrics(MeterRegistry registry) {
         // Throughput metrics
-        Gauge.builder("zeromq.throughput.messages.per.second")
+        Gauge.builder("zeromq.throughput.messages.per.second", this, ZeroMqMetricsCollector::getCurrentThroughput)
                 .description("Message throughput per second")
                 .tag("component", "zeromq")
-                .register(registry, this, ZeroMqMetricsCollector::getCurrentThroughput);
+                .register(registry);
         
         // Connection pool metrics
-        Gauge.builder("zeromq.pool.utilization")
+        Gauge.builder("zeromq.pool.utilization", this, ZeroMqMetricsCollector::getPoolUtilization)
                 .description("Connection pool utilization percentage")
                 .tag("component", "zeromq")
-                .register(registry, this, ZeroMqMetricsCollector::getPoolUtilization);
+                .register(registry);
         
         // Security metrics
-        Gauge.builder("zeromq.security.curve.enabled")
+        Gauge.builder("zeromq.security.curve.enabled", this, ZeroMqMetricsCollector::isCurveEnabled)
                 .description("Whether CURVE security is enabled (1=yes, 0=no)")
                 .tag("component", "zeromq")
-                .register(registry, this, ZeroMqMetricsCollector::isCurveEnabled);
+                .register(registry);
     }
 
     /**
