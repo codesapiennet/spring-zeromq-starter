@@ -287,4 +287,16 @@ public class ZeroMqAutoConfiguration {
         log.info("ZeroMQ running in PRODUCTION mode - strict security enforced");
         return new ZeroMqProductionConfiguration(properties);
     }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "spring.zeromq.security", name = "mechanism", havingValue = "CURVE")
+    @ConditionalOnMissingBean
+    public com.example.zeromq.core.ZmqZapAuthenticator zmqZapAuthenticator(ZmqContextHolder contextHolder,
+                                                                          ZeroMqProperties properties) {
+        log.info("Creating ZeroMQ ZAP authenticator (CURVE) for inproc://zeromq.zap.01");
+        java.util.List<String> allowed = properties.getSecurity().getCurve().getAllowedClientPublicKeys();
+        com.example.zeromq.core.ZmqZapAuthenticator authenticator = new com.example.zeromq.core.ZmqZapAuthenticator(contextHolder, allowed);
+        authenticator.start();
+        return authenticator;
+    }
 } 

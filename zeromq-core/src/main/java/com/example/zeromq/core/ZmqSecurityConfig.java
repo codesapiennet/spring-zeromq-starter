@@ -331,19 +331,30 @@ public class ZmqSecurityConfig {
                                      String correlationId, long operationId) {
         // Enable CURVE server mode
         socket.setCurveServer(true);
-        
+
+        // Decode and set server keys (Z85 -> raw bytes)
+        byte[] serverPub = ZMQ.Curve.z85Decode(config.getServerPublicKey());
+        byte[] serverSec = ZMQ.Curve.z85Decode(config.getServerSecretKey());
+
+        if (serverPub == null || serverPub.length != 32) {
+            throw new SecurityException("Invalid server public key - failed Z85 decode or incorrect length", "CURVE");
+        }
+        if (serverSec == null || serverSec.length != 32) {
+            throw new SecurityException("Invalid server secret key - failed Z85 decode or incorrect length", "CURVE");
+        }
+
         // Set server keys
-        socket.setCurvePublicKey(config.getServerPublicKey().getBytes());
-        socket.setCurveSecretKey(config.getServerSecretKey().getBytes());
-        
+        socket.setCurvePublicKey(serverPub);
+        socket.setCurveSecretKey(serverSec);
+
         log.info("component=zeromq-security event=curve-server-configured " +
                 "correlationId={} operationId={} serverPublicKey={}", 
                 correlationId, operationId, config.getServerPublicKey());
-        
+
         // Configure mutual authentication if enabled
         if (config.isMutualAuth()) {
-            // In mutual auth, server validates client certificates
-            // This would typically involve setting up a certificate store
+            // In mutual auth, server validates client certificates via ZAP handler
+            // We log the configured client public key for audit (public only)
             log.info("component=zeromq-security event=curve-mutual-auth-enabled " +
                     "correlationId={} operationId={} clientPublicKey={}", 
                     correlationId, operationId, config.getClientPublicKey());
@@ -355,13 +366,28 @@ public class ZmqSecurityConfig {
      */
     private void configureClientCurve(ZMQ.Socket socket, CurveConfig config, 
                                      String correlationId, long operationId) {
+        // Decode and set client keys (Z85 -> raw bytes)
+        byte[] clientPub = ZMQ.Curve.z85Decode(config.getClientPublicKey());
+        byte[] clientSec = ZMQ.Curve.z85Decode(config.getClientSecretKey());
+        byte[] serverPub = ZMQ.Curve.z85Decode(config.getServerPublicKey());
+
+        if (clientPub == null || clientPub.length != 32) {
+            throw new SecurityException("Invalid client public key - failed Z85 decode or incorrect length", "CURVE");
+        }
+        if (clientSec == null || clientSec.length != 32) {
+            throw new SecurityException("Invalid client secret key - failed Z85 decode or incorrect length", "CURVE");
+        }
+        if (serverPub == null || serverPub.length != 32) {
+            throw new SecurityException("Invalid server public key - failed Z85 decode or incorrect length", "CURVE");
+        }
+
         // Set client keys
-        socket.setCurvePublicKey(config.getClientPublicKey().getBytes());
-        socket.setCurveSecretKey(config.getClientSecretKey().getBytes());
-        
+        socket.setCurvePublicKey(clientPub);
+        socket.setCurveSecretKey(clientSec);
+
         // Set server public key for validation
-        socket.setCurveServerKey(config.getServerPublicKey().getBytes());
-        
+        socket.setCurveServerKey(serverPub);
+
         log.info("component=zeromq-security event=curve-client-configured " +
                 "correlationId={} operationId={} clientPublicKey={} serverPublicKey={}", 
                 correlationId, operationId, config.getClientPublicKey(), config.getServerPublicKey());

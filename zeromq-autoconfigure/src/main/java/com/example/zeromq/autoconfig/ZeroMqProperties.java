@@ -168,6 +168,9 @@ public class ZeroMqProperties {
             private String clientSecretKey = "";
             private boolean mutualAuth = false;
 
+            // List of allowed client public keys (Z85 encoded) used by the ZAP authenticator
+            private java.util.List<String> allowedClientPublicKeys = new java.util.ArrayList<>();
+
             public String getServerPublicKey() { return serverPublicKey; }
             public void setServerPublicKey(String serverPublicKey) { this.serverPublicKey = serverPublicKey; }
 
@@ -182,6 +185,9 @@ public class ZeroMqProperties {
 
             public boolean isMutualAuth() { return mutualAuth; }
             public void setMutualAuth(boolean mutualAuth) { this.mutualAuth = mutualAuth; }
+
+            public java.util.List<String> getAllowedClientPublicKeys() { return allowedClientPublicKeys; }
+            public void setAllowedClientPublicKeys(java.util.List<String> allowedClientPublicKeys) { this.allowedClientPublicKeys = allowedClientPublicKeys; }
         }
     }
 
