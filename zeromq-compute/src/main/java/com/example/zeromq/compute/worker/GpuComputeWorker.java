@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+import jakarta.annotation.PostConstruct;
 
 import java.util.concurrent.TimeUnit;
 
@@ -25,33 +26,32 @@ public class GpuComputeWorker implements CommandLineRunner {
 
     private final ZeroMqTemplate zeroMqTemplate;
     private final CudaComputeEngine computeEngine;
+    private final WorkerManager workerManager;
 
-    public GpuComputeWorker(ZeroMqTemplate zeroMqTemplate, CudaComputeEngine computeEngine) {
+    private volatile String pullerMatrixId;
+    private volatile String pullerMlId;
+    private final String workerId = "gpu-worker-" + java.util.UUID.randomUUID().toString().substring(0, 8);
+
+    public GpuComputeWorker(ZeroMqTemplate zeroMqTemplate, CudaComputeEngine computeEngine, WorkerManager workerManager) {
         this.zeroMqTemplate = zeroMqTemplate;
         this.computeEngine = computeEngine;
+        this.workerManager = workerManager;
+    }
+
+    @PostConstruct
+    private void registerWithManager() {
+        try {
+            workerManager.registerWorker(workerId, this::startWorker, this::stopWorker, 1);
+        } catch (Exception e) {
+            log.warn("Failed to register GPU worker with WorkerManager: {}", e.getMessage());
+        }
     }
 
     @Override
     public void run(String... args) {
         log.info("Starting GPU compute worker. GPU available: {}", computeEngine.isGpuAvailable());
 
-        // Pull matrix-vector multiply tasks (typed)
-        zeroMqTemplate.pull("tcp://localhost:5580", ComputeTask.class, task -> {
-            try {
-                processComputeTask(task);
-            } catch (Exception e) {
-                log.error("Failed to handle compute task: {}", e.getMessage(), e);
-            }
-        });
-
-        // Pull ML inference tasks (typed)
-        zeroMqTemplate.pull("tcp://localhost:5581", ComputeTask.class, task -> {
-            try {
-                processMLInferenceTask(task);
-            } catch (Exception e) {
-                log.error("Failed to handle ML task: {}", e.getMessage(), e);
-            }
-        });
+        startWorker();
 
         // Keep the application running; sockets are managed by ZeroMqTemplate threads
         try {
@@ -61,7 +61,40 @@ public class GpuComputeWorker implements CommandLineRunner {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.info("GPU compute worker interrupted, shutting down");
+            stopWorker();
         }
+    }
+
+    public synchronized void startWorker() {
+        if (pullerMatrixId == null) {
+            pullerMatrixId = zeroMqTemplate.pull("tcp://localhost:5580", ComputeTask.class, task -> {
+                try {
+                    processComputeTask(task);
+                } catch (Exception e) {
+                    log.error("Failed to handle compute task: {}", e.getMessage(), e);
+                }
+            });
+        }
+        if (pullerMlId == null) {
+            pullerMlId = zeroMqTemplate.pull("tcp://localhost:5581", ComputeTask.class, task -> {
+                try {
+                    processMLInferenceTask(task);
+                } catch (Exception e) {
+                    log.error("Failed to handle ML task: {}", e.getMessage(), e);
+                }
+            });
+        }
+        log.info("GPU worker {} subscriptions started (matrixPull={}, mlPull={})", workerId, pullerMatrixId, pullerMlId);
+    }
+
+    public synchronized void stopWorker() {
+        if (pullerMatrixId != null) {
+            try { zeroMqTemplate.stopPull(pullerMatrixId); } catch (Exception e) { log.warn("Failed to stop matrix pull {}: {}", pullerMatrixId, e.getMessage()); } finally { pullerMatrixId = null; }
+        }
+        if (pullerMlId != null) {
+            try { zeroMqTemplate.stopPull(pullerMlId); } catch (Exception e) { log.warn("Failed to stop ml pull {}: {}", pullerMlId, e.getMessage()); } finally { pullerMlId = null; }
+        }
+        log.info("GPU worker {} subscriptions stopped", workerId);
     }
 
     private void processComputeTask(ComputeTask task) {
