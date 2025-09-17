@@ -1,9 +1,9 @@
-# Spring ZMQ Starter
+# Spring ZMQ Starter
 
-| ![[./spring-zmq-logo.webp]] | >> **Goal** – Provide a **Spring Boot starter** that gives developers a *zero‑dependency* (no external broker) messaging layer built on **ZeroMQ** (JeroMQ) with **full end‑to‑end CURVE encryption**, annotation‑driven APIs and complete auto‑configuration.  <br><br>>> The three files below (`README.md`, `RULES.md`, `WORKFLOWS.md`) contain **every class, configuration, and script** you need to copy‑paste into a new project – no additional scaffolding required. |
+| ![[./spring-zmq-logo.webp]] | >> **Goal** – Provide a **Spring Boot starter** that gives developers a *zero-dependency* (no external broker) messaging layer built on **ZeroMQ** (JeroMQ) with **full end-to-end CURVE encryption**, annotation-driven APIs and complete auto-configuration.  <br><br>>> The three files below (`README.md`, `RULES.md`, `WORKFLOWS.md`) contain **every class, configuration, and script** you need to copy-paste into a new project – no additional scaffolding required. |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 
-## 1️⃣ Complete Project Structure (copy‑paste)
+## 1️⃣ Complete Project Structure (copy-paste)
 
 ```treeview
 
@@ -485,7 +485,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
 /**
- * JSON converter using Jackson (default for most use‑cases).
+ * JSON converter using Jackson (default for most use-cases).
  */
 @Component
 public class JacksonMessageConverter implements MessageConverter {
@@ -521,7 +521,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Applies PLAIN or CURVE security to a newly created socket.
- * Keys are Z85‑encoded strings (the format JeroMQ expects).
+ * Keys are Z85-encoded strings (the format JeroMQ expects).
  */
 @Component
 public class ZmqSecurityConfig {
@@ -763,7 +763,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * High‑level helper that hides socket boilerplate.
+ * High-level helper that hides socket boilerplate.
  * All methods are synchronous for simplicity; async variants can be added later.
  */
 @Component
@@ -973,7 +973,7 @@ public class ZeroMqTemplate {
 </project>
 ```
 
-*No Java source needed – the starter simply pulls in the auto‑configuration module.*
+*No Java source needed – the starter simply pulls in the auto-configuration module.*
 
 ---  
 
@@ -1044,7 +1044,7 @@ import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 
 /**
- * Demonstrates a CURVE‑protected PUB socket.
+ * Demonstrates a CURVE-protected PUB socket.
  */
 @Component
 public class EncryptedServer {
@@ -1143,7 +1143,7 @@ mvn -pl sample-app spring-boot:run -Dspring-boot.run.fork=true &
 APP_PID=$!
 sleep 5   # give it time to bind sockets
 
-# 3. Simple curl‑like test – publish a message via the template
+# 3. Simple curl-like test – publish a message via the template
 # (we use a tiny Java class that runs inside the same JVM)
 cat <<'EOF' > src/test/java/com/example/app/SmokeTest.java
 package com.example.app;
@@ -1186,12 +1186,12 @@ chmod +x scripts/ci.sh
 
 Running `./scripts/ci.sh` performs a full build, starts the demo, runs a smoke test, and shuts everything down.
 
----  
+---
 ## 8️⃣ Vector Data Support
 
 ### Overview
 
-The Spring ZeroMQ framework provides **native support for vector data transmission**, enabling AI/ML applications, scientific computing, and data analytics workloads to seamlessly exchange high-dimensional data arrays through ZeroMQ messaging patterns. Vector data is treated as a first-class citizen alongside JSON, binary, and other data types.
+The Spring ZeroMQ framework provides native support for vector data transmission, enabling AI/ML applications, scientific computing, and data analytics workloads to seamlessly exchange high-dimensional data arrays through ZeroMQ messaging patterns. Vector data is treated as a first-class citizen alongside JSON, binary, and other data types.
 
 ### Supported Vector Formats
 
@@ -1774,7 +1774,7 @@ public class VectorDatabaseService {
 }
 ```
 
-This vector support makes the Spring ZeroMQ framework ideal for **AI/ML applications, scientific computing, real-time analytics, and high-performance data processing** where efficient vector transmission is critical for system performance.
+This vector support makes the Spring ZeroMQ framework ideal for AI/ML applications, scientific computing, real-time analytics, and high-performance data processing where efficient vector transmission is critical for system performance.
 
 ---
 
@@ -1782,7 +1782,7 @@ This vector support makes the Spring ZeroMQ framework ideal for **AI/ML applica
 
 ### Overview
 
-The Spring ZeroMQ framework integrates **native GPU and CPU compute capabilities** for high-performance distributed computing workloads. This enables seamless offloading of computational tasks to specialized hardware while maintaining ZeroMQ's broker-less messaging architecture.
+The Spring ZeroMQ framework integrates native GPU and CPU compute capabilities for high-performance distributed computing workloads. This enables seamless offloading of computational tasks to specialized hardware while maintaining ZeroMQ's broker-less messaging architecture.
 
 ### Supported Compute Backends
 
@@ -2690,7 +2690,7 @@ public class ScientificComputingPipeline {
 }
 ```
 
-This GPU/CPU compute integration transforms the Spring ZeroMQ framework into a **complete distributed computing platform**, enabling high-performance workloads across AI/ML, scientific computing, real-time analytics, and computer vision applications while maintaining ZeroMQ's broker-less messaging advantages.
+This GPU/CPU compute integration transforms the Spring ZeroMQ framework into a complete distributed computing platform, enabling high-performance workloads across AI/ML, scientific computing, real-time analytics, and computer vision applications while maintaining ZeroMQ's broker-less messaging advantages.
 
 ---
 
