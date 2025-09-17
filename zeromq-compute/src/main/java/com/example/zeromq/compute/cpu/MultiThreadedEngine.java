@@ -110,14 +110,17 @@ public class MultiThreadedEngine extends ComputeEngine {
                     }
                 }
 
-                float[] accumulated = new float[totalLen];
+                float[] accumulated = com.example.zeromq.core.BufferPool.INSTANCE.acquire(totalLen);
                 int offset = 0;
                 for (float[] part : parts) {
                     System.arraycopy(part, 0, accumulated, offset, part.length);
                     offset += part.length;
                 }
 
-                return new DenseVector(accumulated);
+                // Defensive copy to preserve immutability of DenseVector and allow releasing the pooled buffer
+                float[] resultCopy = java.util.Arrays.copyOf(accumulated, totalLen);
+                com.example.zeromq.core.BufferPool.INSTANCE.release(accumulated);
+                return new DenseVector(resultCopy);
             } catch (Exception e) {
                 log.error("Virtual-thread matrixVectorMultiply failed: {}", e.getMessage(), e);
                 throw new RuntimeException(e);

@@ -430,10 +430,13 @@ public class OptimizedCpuComputeEngine extends ComputeEngine {
 
                 float[] upperData = upperResult.getData();
                 float[] lowerData = lowerResult.getData();
-                float[] combined = new float[upperData.length + lowerData.length];
+                int totalLen = upperData.length + lowerData.length;
+                float[] combined = com.example.zeromq.core.BufferPool.INSTANCE.acquire(totalLen);
                 System.arraycopy(upperData, 0, combined, 0, upperData.length);
                 System.arraycopy(lowerData, 0, combined, upperData.length, lowerData.length);
-                return new DenseVector(combined);
+                float[] resultCopy = java.util.Arrays.copyOf(combined, totalLen);
+                com.example.zeromq.core.BufferPool.INSTANCE.release(combined);
+                return new DenseVector(resultCopy);
             }
         }
 
