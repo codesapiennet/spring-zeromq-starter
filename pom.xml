@@ -28,6 +28,7 @@
         <module>zeromq-annotations</module>
         <module>zeromq-compute</module>
         <module>zeromq-examples</module>
+        <module>zeromq-spring-boot-starter</module>
     </modules>
 
     <properties>
