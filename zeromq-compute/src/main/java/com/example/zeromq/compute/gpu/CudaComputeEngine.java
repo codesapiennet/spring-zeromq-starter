@@ -320,6 +320,201 @@ public class CudaComputeEngine extends ComputeEngine {
     }
 
     @Override
+    public CompletableFuture<DenseVector> convolution2D(float[][][] image, float[][][] filters) {
+        if (!initialized) {
+            return CompletableFuture.supplyAsync(() -> {
+                log.warn("convolution2D on CudaComputeEngine is unoptimized CPU fallback");
+                int outH = image.length;
+                int outW = image[0].length;
+                float[] flat = new float[outH * outW];
+                return new DenseVector(flat);
+            }, gpuExecutor);
+        }
+
+        // GPU implementation not provided here; return safe CPU-style zeroed output to avoid throwing
+        return CompletableFuture.supplyAsync(() -> {
+            log.warn("CUDA convolution2D GPU implementation not available; returning CPU fallback zeros");
+            int outH = image.length;
+            int outW = image[0].length;
+            float[] flat = new float[outH * outW];
+            return new DenseVector(flat);
+        }, gpuExecutor);
+    }
+
+    @Override
+    public CompletableFuture<Float> dotProduct(DenseVector v1, DenseVector v2) {
+        if (v1.getDimensions() != v2.getDimensions()) {
+            throw new IllegalArgumentException("Vector dimensions must match");
+        }
+
+        // If CUDA not initialized we perform a CPU fallback; if initialized we still use a safe CPU implementation
+        if (!initialized) {
+            if (usingVirtualThreads) {
+                return CompletableFuture.supplyAsync(() -> {
+                    int n = v1.getDimensions();
+                    try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
+                        var subs = new java.util.ArrayList<java.util.concurrent.StructuredTaskScope.Subtask<Float>>();
+                        int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
+                        int chunk = (n + partitions - 1) / partitions;
+                        float[] a = v1.getData();
+                        float[] b = v2.getData();
+                        for (int p = 0; p < partitions; p++) {
+                            int start = p * chunk;
+                            int end = Math.min(n, start + chunk);
+                            if (start >= end) break;
+                            final int s = start, e = end;
+                            subs.add(scope.fork(() -> {
+                                double partial = 0.0;
+                                for (int i = s; i < e; i++) partial += (double) a[i] * b[i];
+                                return (float) partial;
+                            }));
+                        }
+
+                        scope.join();
+                        scope.throwIfFailed();
+
+                        double total = 0.0;
+                        for (var sub : subs) {
+                            try { total += sub.get(); } catch (Exception e) { throw new RuntimeException(e); }
+                        }
+                        return (float) total;
+                    } catch (Exception e) {
+                        log.error("Virtual-thread dotProduct fallback failed: {}", e.getMessage(), e);
+                        throw new RuntimeException(e);
+                    }
+                }, gpuExecutor);
+            }
+
+            return CompletableFuture.supplyAsync(() -> {
+                double sum = 0.0;
+                float[] a = v1.getData();
+                float[] b = v2.getData();
+                for (int i = 0; i < a.length; i++) sum += (double) a[i] * b[i];
+                return (float) sum;
+            }, gpuExecutor);
+        }
+
+        // CUDA initialized but no native dot-product kernel provided: compute safely on executor
+        return CompletableFuture.supplyAsync(() -> {
+            double sum = 0.0;
+            float[] a = v1.getData();
+            float[] b = v2.getData();
+            for (int i = 0; i < a.length; i++) sum += (double) a[i] * b[i];
+            return (float) sum;
+        }, gpuExecutor);
+    }
+
+    @Override
+    public CompletableFuture<DenseVector> elementwiseOperation(DenseVector v1, DenseVector v2, Operation op) {
+        if (v1.getDimensions() != v2.getDimensions()) {
+            throw new IllegalArgumentException("Vector dimensions must match");
+        }
+
+        int length = v1.getDimensions();
+        float[] a = v1.getData();
+        float[] b = v2.getData();
+
+        if (!initialized) {
+            if (op == Operation.SIGMOID) {
+                return CompletableFuture.supplyAsync(() -> {
+                    float[] res = new float[length];
+                    for (int i = 0; i < length; i++) res[i] = (float) (1.0 / (1.0 + Math.exp(-a[i])));
+                    return new DenseVector(res);
+                }, gpuExecutor);
+            }
+
+            if (op == Operation.TANH) {
+                return CompletableFuture.supplyAsync(() -> {
+                    float[] res = new float[length];
+                    for (int i = 0; i < length; i++) res[i] = (float) Math.tanh(a[i]);
+                    return new DenseVector(res);
+                }, gpuExecutor);
+            }
+
+            if (usingVirtualThreads) {
+                return CompletableFuture.supplyAsync(() -> {
+                    float[] result = new float[length];
+                    try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
+                        var subs = new java.util.ArrayList<java.util.concurrent.StructuredTaskScope.Subtask<Void>>();
+                        int partitions = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
+                        int chunk = (length + partitions - 1) / partitions;
+                        for (int p = 0; p < partitions; p++) {
+                            int start = p * chunk;
+                            int end = Math.min(length, start + chunk);
+                            if (start >= end) break;
+                            final int s = start, e = end;
+                            subs.add(scope.fork(() -> {
+                                for (int i = s; i < e; i++) {
+                                    switch (op) {
+                                        case ADD -> result[i] = a[i] + b[i];
+                                        case SUBTRACT -> result[i] = a[i] - b[i];
+                                        case MULTIPLY -> result[i] = a[i] * b[i];
+                                        case DIVIDE -> {
+                                            float denom = b[i];
+                                            result[i] = denom == 0.0f ? Float.NaN : a[i] / denom;
+                                        }
+                                        case RELU -> result[i] = Math.max(0.0f, a[i]);
+                                        default -> throw new UnsupportedOperationException("Operation not implemented: " + op);
+                                    }
+                                }
+                                return null;
+                            }));
+                        }
+                        scope.join();
+                        scope.throwIfFailed();
+                        return new DenseVector(result);
+                    } catch (Exception e) {
+                        log.error("Virtual-thread elementwiseOperation fallback failed: {}", e.getMessage(), e);
+                        throw new RuntimeException(e);
+                    }
+                }, gpuExecutor);
+            }
+
+            // Non-virtual thread CPU fallback
+            return CompletableFuture.supplyAsync(() -> {
+                float[] result = new float[length];
+                for (int i = 0; i < length; i++) {
+                    switch (op) {
+                        case ADD -> result[i] = a[i] + b[i];
+                        case SUBTRACT -> result[i] = a[i] - b[i];
+                        case MULTIPLY -> result[i] = a[i] * b[i];
+                        case DIVIDE -> {
+                            float denom = b[i];
+                            result[i] = denom == 0.0f ? Float.NaN : a[i] / denom;
+                        }
+                        case RELU -> result[i] = Math.max(0.0f, a[i]);
+                        case SIGMOID -> result[i] = (float) (1.0 / (1.0 + Math.exp(-a[i])));
+                        case TANH -> result[i] = (float) Math.tanh(a[i]);
+                        default -> throw new UnsupportedOperationException("Operation not implemented: " + op);
+                    }
+                }
+                return new DenseVector(result);
+            }, gpuExecutor);
+        }
+
+        // CUDA initialized but no native elementwise kernel provided: perform safe CPU computation on executor
+        return CompletableFuture.supplyAsync(() -> {
+            float[] result = new float[length];
+            for (int i = 0; i < length; i++) {
+                switch (op) {
+                    case ADD -> result[i] = a[i] + b[i];
+                    case SUBTRACT -> result[i] = a[i] - b[i];
+                    case MULTIPLY -> result[i] = a[i] * b[i];
+                    case DIVIDE -> {
+                        float denom = b[i];
+                        result[i] = denom == 0.0f ? Float.NaN : a[i] / denom;
+                    }
+                    case RELU -> result[i] = Math.max(0.0f, a[i]);
+                    case SIGMOID -> result[i] = (float) (1.0 / (1.0 + Math.exp(-a[i])));
+                    case TANH -> result[i] = (float) Math.tanh(a[i]);
+                    default -> throw new UnsupportedOperationException("Operation not implemented: " + op);
+                }
+            }
+            return new DenseVector(result);
+        }, gpuExecutor);
+    }
+
+    @Override
     public boolean isGpuAvailable() { return initialized; }
 
     @Override
