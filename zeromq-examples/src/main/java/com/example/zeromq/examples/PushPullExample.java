@@ -24,8 +24,8 @@ public class PushPullExample {
 
     @PostConstruct
     public void runExample() {
-        String pullEndpoint = properties.getNamed().getPushPullPull();
-        String pushEndpoint = properties.getNamed().getPushPullPush();
+        String pushEndpoint = properties.getNamed().getWorkerPush();
+        String pullEndpoint = "tcp://localhost:6010"; // connect to the worker push bind for demo
 
         zeroMqTemplate.pull(pullEndpoint, ExampleMessage.class, message -> {
             log.info("PULL handler processed message id={} payload={}", message.getId(), message.getPayload());

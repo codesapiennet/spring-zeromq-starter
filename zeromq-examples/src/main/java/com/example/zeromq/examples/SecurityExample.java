@@ -33,15 +33,19 @@ public class SecurityExample {
         log.info("Configured security mechanism: {}", mech);
 
         if (mech == ZeroMqProperties.Security.Mechanism.CURVE) {
-            // Use CURVE - construct a simple curve config wrapper used by ZeroMqTemplate (optional)
             var curve = properties.getSecurity().getCurve();
-            com.example.zeromq.core.ZmqSecurityConfig.CurveConfig cfg = new com.example.zeromq.core.ZmqSecurityConfig.CurveConfig(
-                    curve.getServerPublicKey(), curve.getServerSecretKey(), curve.getClientPublicKey(), curve.getClientSecretKey());
+            com.example.zeromq.core.ZmqSecurityConfig.CurveConfig cfg;
+            if (curve.isMutualAuth()) {
+                cfg = com.example.zeromq.core.ZmqSecurityConfig.CurveConfig.forMutualAuth(
+                        curve.getServerPublicKey(), curve.getServerSecretKey(), curve.getClientPublicKey(), curve.getClientSecretKey(), true);
+            } else {
+                cfg = com.example.zeromq.core.ZmqSecurityConfig.CurveConfig.forServer(curve.getServerPublicKey(), curve.getServerSecretKey());
+            }
+
             log.info("Publishing using CURVE-protected socket to {}", endpoint);
             zeroMqTemplate.publish(endpoint, topic, new ExampleMessage(java.util.UUID.randomUUID().toString(), "secure", System.currentTimeMillis()), cfg);
         } else if (mech == ZeroMqProperties.Security.Mechanism.PLAIN) {
             log.info("Publishing using PLAIN-auth socket to {}", endpoint);
-            // publish without curve config; server side will enforce PLAIN
             zeroMqTemplate.publish(endpoint, topic, new ExampleMessage(java.util.UUID.randomUUID().toString(), "plain", System.currentTimeMillis()));
         } else {
             log.info("Publishing without security to {}", endpoint);

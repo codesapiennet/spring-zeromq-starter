@@ -337,6 +337,61 @@ public class ZeroMqTemplate {
         }
     }
 
+    /**
+     * Start a REP server that handles incoming requests using the provided handler.
+     * The handler receives the raw request bytes and should return the raw response bytes.
+     */
+    @FunctionalInterface
+    public interface ReplyHandler {
+        byte[] handle(byte[] request) throws Exception;
+    }
+
+    public void reply(String bindEndpoint, ReplyHandler handler) {
+        reply(bindEndpoint, handler, null);
+    }
+
+    public void reply(String bindEndpoint, ReplyHandler handler, ZmqSecurityConfig.CurveConfig curveConfig) {
+        validateEndpoint(bindEndpoint);
+        Objects.requireNonNull(handler, "Handler must not be null");
+
+        String correlationId = generateCorrelationId();
+        incrementPatternCounter("reply");
+
+        CompletableFuture.runAsync(() -> {
+            ZMQ.Socket socket = null;
+            try {
+                socket = curveConfig != null
+                        ? socketFactory.createSocket(ZMQ.REP, curveConfig, correlationId)
+                        : socketFactory.createSocket(ZMQ.REP, correlationId);
+
+                socket.bind(bindEndpoint);
+                log.info("component=zeromq-template event=reply-server-started correlationId={} bind={}", correlationId, bindEndpoint);
+
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        byte[] request = socket.recv();
+                        if (request == null) continue;
+                        byte[] response = handler.handle(request);
+                        socket.send(response != null ? response : new byte[0]);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    } catch (Exception e) {
+                        log.error("component=zeromq-template event=reply-handler-error correlationId={} error={}", correlationId, e.getMessage());
+                        try { socket.send(new byte[0]); } catch (Exception ignored) {}
+                    }
+                }
+            } catch (Exception e) {
+                log.error("component=zeromq-template event=reply-server-failed correlationId={} error={}", correlationId, e.getMessage());
+            } finally {
+                if (socket != null) {
+                    try { socket.close(); } catch (Exception ignored) {}
+                }
+                log.info("component=zeromq-template event=reply-server-stopped correlationId={}", correlationId);
+            }
+        }, asyncExecutor);
+    }
+
     // ========== PUSH/PULL Pattern ==========
 
     /**
