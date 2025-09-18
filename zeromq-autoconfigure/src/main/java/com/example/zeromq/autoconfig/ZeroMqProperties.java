@@ -106,6 +106,8 @@ public class ZeroMqProperties {
         private String reqrepBind = "tcp://*:5611";
         private String reqrepConnect = "tcp://localhost:5611";
         private String securityPubsub = pubsubPublish;
+        private String workerConnect = "tcp://localhost:6010";
+        private String vectorSubscribe = "tcp://localhost:6020";
 
         private String vectorPublish = "tcp://*:6020";
         private String messagingPublish = "tcp://*:6000";
@@ -143,6 +145,12 @@ public class ZeroMqProperties {
 
         public String getSecurityPubsub() { return securityPubsub; }
         public void setSecurityPubsub(String securityPubsub) { this.securityPubsub = securityPubsub; }
+
+        public String getWorkerConnect() { return workerConnect; }
+        public void setWorkerConnect(String workerConnect) { this.workerConnect = workerConnect; }
+
+        public String getVectorSubscribe() { return vectorSubscribe; }
+        public void setVectorSubscribe(String vectorSubscribe) { this.vectorSubscribe = vectorSubscribe; }
 
         public String getVectorPublish() { return vectorPublish; }
         public void setVectorPublish(String vectorPublish) { this.vectorPublish = vectorPublish; }

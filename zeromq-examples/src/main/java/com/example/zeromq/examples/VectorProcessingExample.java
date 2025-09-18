@@ -30,7 +30,7 @@ public class VectorProcessingExample {
     @PostConstruct
     public void runExample() {
         String publishEndpoint = properties.getNamed().getVectorPublish(); // typically tcp://*:6020
-        String subscribeEndpoint = "tcp://localhost:6020"; // connect to the publish bind for demo
+        String subscribeEndpoint = properties.getNamed().getVectorSubscribe(); // connect to the publish bind
         String topic = "vector.batch";
 
         CountDownLatch latch = new CountDownLatch(1);

@@ -2,6 +2,7 @@ package com.example.zeromq.examples;
 
 import com.example.zeromq.autoconfig.ZeroMqTemplate;
 import com.example.zeromq.core.JacksonMessageConverter;
+import com.example.zeromq.autoconfig.ZeroMqProperties;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,14 +17,16 @@ public class MicroservicesUserService {
     private static final Logger log = LoggerFactory.getLogger(MicroservicesUserService.class);
 
     private final ZeroMqTemplate zeroMqTemplate;
+    private final ZeroMqProperties properties;
 
-    public MicroservicesUserService(ZeroMqTemplate zeroMqTemplate) {
+    public MicroservicesUserService(ZeroMqTemplate zeroMqTemplate, ZeroMqProperties properties) {
         this.zeroMqTemplate = zeroMqTemplate;
+        this.properties = properties;
     }
 
     @PostConstruct
     public void start() {
-        String bindEndpoint = "tcp://*:5610";
+        String bindEndpoint = properties.getNamed().getReqrepBind();
 
         // Start a REP server that handles ExampleMessage requests
         zeroMqTemplate.reply(bindEndpoint, requestBytes -> {

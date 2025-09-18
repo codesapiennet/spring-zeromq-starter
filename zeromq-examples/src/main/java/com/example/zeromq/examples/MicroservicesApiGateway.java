@@ -1,6 +1,7 @@
 package com.example.zeromq.examples;
 
 import com.example.zeromq.autoconfig.ZeroMqTemplate;
+import com.example.zeromq.autoconfig.ZeroMqProperties;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,14 +16,16 @@ public class MicroservicesApiGateway {
     private static final Logger log = LoggerFactory.getLogger(MicroservicesApiGateway.class);
 
     private final ZeroMqTemplate zeroMqTemplate;
+    private final ZeroMqProperties properties;
 
-    public MicroservicesApiGateway(ZeroMqTemplate zeroMqTemplate) {
+    public MicroservicesApiGateway(ZeroMqTemplate zeroMqTemplate, ZeroMqProperties properties) {
         this.zeroMqTemplate = zeroMqTemplate;
+        this.properties = properties;
     }
 
     @PostConstruct
     public void run() {
-        String connectEndpoint = "tcp://localhost:5610";
+        String connectEndpoint = properties.getNamed().getReqrepConnect();
 
         ExampleMessage req = new ExampleMessage(java.util.UUID.randomUUID().toString(), "whoami", System.currentTimeMillis());
         log.info("API Gateway sending request id={}", req.getId());
