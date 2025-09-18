@@ -3,7 +3,8 @@ package com.example.zeromq.compute.science;
 /**
  * Simple iterative Cooley-Tukey FFT implementation for radix-2 lengths.
  * This class provides utilities for in-place complex transforms using
- * separate real/imag arrays.
+ * separate real/imag arrays. Optimized to precompute twiddle factors per stage
+ * to avoid repeated Math.cos/Math.sin calls and reduce floating work inside inner loops.
  */
 public final class FFTProcessor {
 
@@ -31,27 +32,42 @@ public final class FFTProcessor {
             }
         }
 
-        // Cooley-Tukey
+        // Cooley-Tukey with precomputed twiddles per stage
         for (int len = 2; len <= n; len <<= 1) {
+            int half = len >> 1;
             double ang = 2 * Math.PI / len * (inverse ? -1 : 1);
+
+            // Precompute twiddle factors for this stage (length = len)
+            double[] wR = new double[half];
+            double[] wI = new double[half];
             double wlenR = Math.cos(ang);
             double wlenI = Math.sin(ang);
+            // Start with w=1
+            wR[0] = 1.0;
+            wI[0] = 0.0;
+            for (int k = 1; k < half; k++) {
+                double prevR = wR[k-1];
+                double prevI = wI[k-1];
+                // complex multiply prev * wlen
+                wR[k] = prevR * wlenR - prevI * wlenI;
+                wI[k] = prevR * wlenI + prevI * wlenR;
+            }
+
             for (int i = 0; i < n; i += len) {
-                double uR = 1.0; double uI = 0.0;
-                for (int j = 0; j < (len >> 1); j++) {
+                for (int j = 0; j < half; j++) {
                     int a = i + j;
-                    int b = i + j + (len >> 1);
-                    double vR = real[b] * uR - imag[b] * uI;
-                    double vI = real[b] * uI + imag[b] * uR;
+                    int b = i + j + half;
 
-                    real[b] = real[a] - vR;
-                    imag[b] = imag[a] - vI;
-                    real[a] += vR;
-                    imag[a] += vI;
+                    double uR = real[a];
+                    double uI = imag[a];
 
-                    double nextUR = uR * wlenR - uI * wlenI;
-                    double nextUI = uR * wlenI + uI * wlenR;
-                    uR = nextUR; uI = nextUI;
+                    double vR = real[b] * wR[j] - imag[b] * wI[j];
+                    double vI = real[b] * wI[j] + imag[b] * wR[j];
+
+                    real[b] = uR - vR;
+                    imag[b] = uI - vI;
+                    real[a] = uR + vR;
+                    imag[a] = uI + vI;
                 }
             }
         }

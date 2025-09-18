@@ -9,30 +9,45 @@ public final class StatisticalCompute {
     private StatisticalCompute() {}
 
     public static double mean(double[] data) {
+        if (data == null || data.length == 0) return 0.0;
+        // Kahan summation for numerical stability
         double sum = 0.0;
-        for (double v : data) sum += v;
-        return data.length == 0 ? 0.0 : sum / data.length;
+        double c = 0.0;
+        for (double v : data) {
+            double y = v - c;
+            double t = sum + y;
+            c = (t - sum) - y;
+            sum = t;
+        }
+        return sum / data.length;
     }
 
     public static double variance(double[] data) {
-        if (data.length == 0) return 0.0;
-        double mu = mean(data);
-        double s = 0.0;
-        for (double v : data) {
-            double d = v - mu; s += d * d;
+        if (data == null || data.length == 0) return 0.0;
+        // Welford's online algorithm for stable one-pass variance
+        double mean = 0.0;
+        double m2 = 0.0;
+        int n = 0;
+        for (double x : data) {
+            n++;
+            double delta = x - mean;
+            mean += delta / n;
+            double delta2 = x - mean;
+            m2 += delta * delta2;
         }
-        return s / data.length;
+        return m2 / n; // population variance
     }
 
     public static double covariance(double[] x, double[] y) {
+        if (x == null || y == null) throw new IllegalArgumentException("Arrays must not be null");
         if (x.length != y.length) throw new IllegalArgumentException("Arrays must have same length");
         int n = x.length;
         if (n == 0) return 0.0;
-        double mx = mean(x);
-        double my = mean(y);
-        double s = 0.0;
-        for (int i = 0; i < n; i++) s += (x[i] - mx) * (y[i] - my);
-        return s / n;
+        double meanX = mean(x);
+        double meanY = mean(y);
+        double cov = 0.0;
+        for (int i = 0; i < n; i++) cov += (x[i] - meanX) * (y[i] - meanY);
+        return cov / n;
     }
 
     public static double pearsonCorrelation(double[] x, double[] y) {
