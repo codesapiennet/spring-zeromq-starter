@@ -27,15 +27,17 @@ public class CpuComputeWorker implements CommandLineRunner {
     private final ZeroMqTemplate zeroMqTemplate;
     private final OptimizedCpuComputeEngine computeEngine;
     private final WorkerManager workerManager;
+    private final com.example.zeromq.autoconfig.ZeroMqProperties properties;
 
     private volatile String pullerMatrixId;
     private volatile String pullerMlId;
     private final String workerId = "cpu-worker-" + java.util.UUID.randomUUID().toString().substring(0, 8);
 
-    public CpuComputeWorker(ZeroMqTemplate zeroMqTemplate, OptimizedCpuComputeEngine computeEngine, WorkerManager workerManager) {
+    public CpuComputeWorker(ZeroMqTemplate zeroMqTemplate, OptimizedCpuComputeEngine computeEngine, WorkerManager workerManager, com.example.zeromq.autoconfig.ZeroMqProperties properties) {
         this.zeroMqTemplate = zeroMqTemplate;
         this.computeEngine = computeEngine;
         this.workerManager = workerManager;
+        this.properties = properties;
     }
 
     @PostConstruct
@@ -67,7 +69,7 @@ public class CpuComputeWorker implements CommandLineRunner {
      */
     public synchronized void startWorker() {
         if (pullerMatrixId == null) {
-            pullerMatrixId = zeroMqTemplate.pull("tcp://localhost:5580", ComputeTask.class, task -> {
+            pullerMatrixId = zeroMqTemplate.pull(properties.getNamed().getComputeMatrixPull(), ComputeTask.class, task -> {
                 try {
                     processComputeTask(task);
                 } catch (Exception e) {
@@ -76,7 +78,7 @@ public class CpuComputeWorker implements CommandLineRunner {
             });
         }
         if (pullerMlId == null) {
-            pullerMlId = zeroMqTemplate.pull("tcp://localhost:5581", ComputeTask.class, task -> {
+            pullerMlId = zeroMqTemplate.pull(properties.getNamed().getComputeMlPull(), ComputeTask.class, task -> {
                 try {
                     processMLInferenceTask(task);
                 } catch (Exception e) {
@@ -132,7 +134,7 @@ public class CpuComputeWorker implements CommandLineRunner {
                     .deviceInfo(getDeviceInfo())
                     .build();
 
-            zeroMqTemplate.publish("tcp://*:5590", "compute.result", computeResult);
+            zeroMqTemplate.publish(properties.getNamed().getComputeResultPublish(), "compute.result", computeResult);
             log.info("Completed CPU task {} in {} ms", task.getTaskId(), TimeUnit.NANOSECONDS.toMillis(duration));
         } catch (Exception e) {
             log.error("Failed to execute compute task {}: {}", task.getTaskId(), e.getMessage(), e);
@@ -161,7 +163,7 @@ public class CpuComputeWorker implements CommandLineRunner {
                     .deviceInfo(getDeviceInfo())
                     .build();
 
-            zeroMqTemplate.publish("tcp://*:5590", "compute.result", computeResult);
+            zeroMqTemplate.publish(properties.getNamed().getComputeResultPublish(), "compute.result", computeResult);
             log.info("Completed CPU ML task {} in {} ms", task.getTaskId(), TimeUnit.NANOSECONDS.toMillis(duration));
         } catch (Exception e) {
             log.error("ML inference failed for task {}: {}", task.getTaskId(), e.getMessage());
@@ -176,7 +178,7 @@ public class CpuComputeWorker implements CommandLineRunner {
                 .error(error)
                 .build();
         try {
-            zeroMqTemplate.publish("tcp://*:5590", "compute.result", computeResult);
+            zeroMqTemplate.publish(properties.getNamed().getComputeResultPublish(), "compute.result", computeResult);
         } catch (Exception e) {
             log.error("Failed to publish error result for task {}: {}", taskId, e.getMessage(), e);
         }

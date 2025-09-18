@@ -21,9 +21,11 @@ public class LocalComputeExample {
     private static final Logger log = LoggerFactory.getLogger(LocalComputeExample.class);
 
     private final ZeroMqTemplate zeroMqTemplate;
+    private final com.example.zeromq.autoconfig.ZeroMqProperties properties;
 
-    public LocalComputeExample(ZeroMqTemplate zeroMqTemplate) {
+    public LocalComputeExample(ZeroMqTemplate zeroMqTemplate, com.example.zeromq.autoconfig.ZeroMqProperties properties) {
         this.zeroMqTemplate = zeroMqTemplate;
+        this.properties = properties;
     }
 
     @PostConstruct
@@ -47,7 +49,7 @@ public class LocalComputeExample {
 
         CountDownLatch latch = new CountDownLatch(1);
 
-        zeroMqTemplate.subscribe("tcp://localhost:5590", "compute.result", com.example.zeromq.compute.ComputeResult.class, result -> {
+        zeroMqTemplate.subscribe(properties.getNamed().getComputeResultSubscribe(), "compute.result", com.example.zeromq.compute.ComputeResult.class, result -> {
             try {
                 if (taskId.equals(result.getTaskId())) {
                     log.info("Received compute result for task {}: success={}, data={}", taskId, result.isSuccess(), result.getData());
@@ -59,7 +61,7 @@ public class LocalComputeExample {
         });
 
         log.info("Publishing local compute task {}", taskId);
-        zeroMqTemplate.push("tcp://*:5580", task);
+        zeroMqTemplate.push(properties.getNamed().getComputeMatrixPush(), task);
 
         try {
             boolean ok = latch.await(5, TimeUnit.SECONDS);

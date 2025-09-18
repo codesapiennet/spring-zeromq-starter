@@ -17,9 +17,11 @@ public class ComputeService {
     private static final Logger log = LoggerFactory.getLogger(ComputeService.class);
 
     private final ZeroMqTemplate zeroMqTemplate;
+    private final com.example.zeromq.autoconfig.ZeroMqProperties properties;
 
-    public ComputeService(ZeroMqTemplate zeroMqTemplate) {
+    public ComputeService(ZeroMqTemplate zeroMqTemplate, com.example.zeromq.autoconfig.ZeroMqProperties properties) {
         this.zeroMqTemplate = zeroMqTemplate;
+        this.properties = properties;
     }
 
     /**
@@ -28,8 +30,8 @@ public class ComputeService {
      */
     public void submitComputeTask(ComputeTask task) {
         try {
-            zeroMqTemplate.push("tcp://*:5580", task);
-            log.info("Submitted compute task {} to tcp://*:5580", task.getTaskId());
+            zeroMqTemplate.push(properties.getNamed().getComputeMatrixPush(), task);
+            log.info("Submitted compute task {} to {}", task.getTaskId(), properties.getNamed().getComputeMatrixPush());
         } catch (Exception e) {
             log.error("Failed to submit compute task {}: {}", task == null ? "<null>" : task.getTaskId(), e.getMessage(), e);
         }

@@ -83,6 +83,65 @@ public class ZeroMqProperties {
     @NotNull
     private Compute compute = new Compute();
 
+    // Named endpoints for easy configuration of well-known sockets used across modules
+    private Named named = new Named();
+
+    public Named getNamed() { return named; }
+    public void setNamed(Named named) { this.named = named; }
+
+    /**
+     * Well-known named endpoints used by examples and workers. Defaults mirror previous hard-coded values.
+     */
+    public static class Named {
+        private String computeResultSubscribe = "tcp://localhost:5590";
+        private String computeResultPublish = "tcp://*:5590";
+
+        private String computeMatrixPull = "tcp://localhost:5580";
+        private String computeMlPull = "tcp://localhost:5581";
+        private String computeMatrixPush = "tcp://*:5580";
+        private String computeMlPush = "tcp://*:5581";
+
+        private String pubsubSubscribe = "tcp://localhost:5591";
+        private String pubsubPublish = "tcp://*:5591";
+
+        private String vectorPublish = "tcp://*:6020";
+        private String messagingPublish = "tcp://*:6000";
+        private String workerPush = "tcp://*:6010";
+
+        public String getComputeResultSubscribe() { return computeResultSubscribe; }
+        public void setComputeResultSubscribe(String computeResultSubscribe) { this.computeResultSubscribe = computeResultSubscribe; }
+
+        public String getComputeResultPublish() { return computeResultPublish; }
+        public void setComputeResultPublish(String computeResultPublish) { this.computeResultPublish = computeResultPublish; }
+
+        public String getComputeMatrixPull() { return computeMatrixPull; }
+        public void setComputeMatrixPull(String computeMatrixPull) { this.computeMatrixPull = computeMatrixPull; }
+
+        public String getComputeMlPull() { return computeMlPull; }
+        public void setComputeMlPull(String computeMlPull) { this.computeMlPull = computeMlPull; }
+
+        public String getComputeMatrixPush() { return computeMatrixPush; }
+        public void setComputeMatrixPush(String computeMatrixPush) { this.computeMatrixPush = computeMatrixPush; }
+
+        public String getComputeMlPush() { return computeMlPush; }
+        public void setComputeMlPush(String computeMlPush) { this.computeMlPush = computeMlPush; }
+
+        public String getPubsubSubscribe() { return pubsubSubscribe; }
+        public void setPubsubSubscribe(String pubsubSubscribe) { this.pubsubSubscribe = pubsubSubscribe; }
+
+        public String getPubsubPublish() { return pubsubPublish; }
+        public void setPubsubPublish(String pubsubPublish) { this.pubsubPublish = pubsubPublish; }
+
+        public String getVectorPublish() { return vectorPublish; }
+        public void setVectorPublish(String vectorPublish) { this.vectorPublish = vectorPublish; }
+
+        public String getMessagingPublish() { return messagingPublish; }
+        public void setMessagingPublish(String messagingPublish) { this.messagingPublish = messagingPublish; }
+
+        public String getWorkerPush() { return workerPush; }
+        public void setWorkerPush(String workerPush) { this.workerPush = workerPush; }
+    }
+
     // Getters and setters
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }

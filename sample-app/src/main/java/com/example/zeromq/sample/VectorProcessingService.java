@@ -20,9 +20,11 @@ public class VectorProcessingService {
     private static final Logger log = LoggerFactory.getLogger(VectorProcessingService.class);
 
     private final ZeroMqTemplate zeroMqTemplate;
+    private final com.example.zeromq.autoconfig.ZeroMqProperties properties;
 
-    public VectorProcessingService(ZeroMqTemplate zeroMqTemplate) {
+    public VectorProcessingService(ZeroMqTemplate zeroMqTemplate, com.example.zeromq.autoconfig.ZeroMqProperties properties) {
         this.zeroMqTemplate = zeroMqTemplate;
+        this.properties = properties;
     }
 
     @PostConstruct
@@ -30,8 +32,8 @@ public class VectorProcessingService {
         log.info("VectorProcessingService initializing - sending a small batch for demo");
         try {
             BatchVector batch = BatchVector.random(4, 8);
-            zeroMqTemplate.publish("tcp://*:6020", "vector.batch", batch);
-            log.info("Published demo BatchVector to tcp://*:6020 topic=vector.batch");
+            zeroMqTemplate.publish(properties.getNamed().getVectorPublish(), "vector.batch", batch);
+            log.info("Published demo BatchVector to {} topic=vector.batch", properties.getNamed().getVectorPublish());
         } catch (Exception e) {
             log.error("VectorProcessingService demo publish failed: {}", e.getMessage(), e);
         }
@@ -41,6 +43,6 @@ public class VectorProcessingService {
      * Send a single vector for processing.
      */
     public void submitVector(DenseVector vector) {
-        zeroMqTemplate.publish("tcp://*:6020", "vector.single", vector);
+        zeroMqTemplate.publish(properties.getNamed().getVectorPublish(), "vector.single", vector);
     }
 } 

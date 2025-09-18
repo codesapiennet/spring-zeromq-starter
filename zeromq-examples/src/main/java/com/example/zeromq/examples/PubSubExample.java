@@ -19,16 +19,18 @@ public class PubSubExample {
     private static final Logger log = LoggerFactory.getLogger(PubSubExample.class);
 
     private final ZeroMqTemplate zeroMqTemplate;
+    private final com.example.zeromq.autoconfig.ZeroMqProperties properties;
 
-    public PubSubExample(ZeroMqTemplate zeroMqTemplate) {
+    public PubSubExample(ZeroMqTemplate zeroMqTemplate, com.example.zeromq.autoconfig.ZeroMqProperties properties) {
         this.zeroMqTemplate = zeroMqTemplate;
+        this.properties = properties;
     }
 
     @PostConstruct
     public void runExample() {
         String topic = "v1.pubsub.example";
-        String subscribeEndpoint = "tcp://localhost:5591"; // subscriber connects
-        String publishEndpoint = "tcp://*:5591"; // publisher binds
+        String subscribeEndpoint = properties.getNamed().getPubsubSubscribe();
+        String publishEndpoint = properties.getNamed().getPubsubPublish();
 
         CountDownLatch latch = new CountDownLatch(1);
 

@@ -34,12 +34,12 @@ public class MessagingService {
         try {
             // Send a sample publish (non-blocking)
             DenseVector vec = DenseVector.random(8);
-            zeroMqTemplate.publish("tcp://*:6000", "sample.topic", vec);
-            log.info("Published sample vector to tcp://*:6000 sample.topic");
+            zeroMqTemplate.publish(properties.getNamed().getMessagingPublish(), "sample.topic", vec);
+            log.info("Published sample vector to {} sample.topic", properties.getNamed().getMessagingPublish());
 
             // Push a sample message to a worker queue (non-blocking)
-            zeroMqTemplate.push("tcp://*:6010", "hello-worker");
-            log.info("Pushed sample message to tcp://*:6010");
+            zeroMqTemplate.push(properties.getNamed().getWorkerPush(), "hello-worker");
+            log.info("Pushed sample message to {}", properties.getNamed().getWorkerPush());
         } catch (Exception e) {
             log.error("MessagingService demo operations failed: {}", e.getMessage(), e);
         }

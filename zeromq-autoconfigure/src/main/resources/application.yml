@@ -6,6 +6,20 @@ spring:
     # Default endpoints for health checks and monitoring
     endpoints: []
     
+    # Named endpoints (well-known sockets) - used by examples and workers
+    named:
+      compute-result-subscribe: tcp://localhost:5590
+      compute-result-publish: tcp://*:5590
+      compute-matrix-pull: tcp://localhost:5580
+      compute-ml-pull: tcp://localhost:5581
+      compute-matrix-push: tcp://*:5580
+      compute-ml-push: tcp://*:5581
+      pubsub-subscribe: tcp://localhost:5591
+      pubsub-publish: tcp://*:5591
+      vector-publish: tcp://*:6020
+      messaging-publish: tcp://*:6000
+      worker-push: tcp://*:6010
+    
     # Security configuration
     security:
       # Security mechanism: NONE, PLAIN, CURVE

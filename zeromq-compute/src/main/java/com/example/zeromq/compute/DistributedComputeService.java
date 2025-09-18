@@ -22,17 +22,19 @@ public class DistributedComputeService {
     private static final Logger log = LoggerFactory.getLogger(DistributedComputeService.class);
 
     private final ZeroMqTemplate zeroMqTemplate;
+    private final com.example.zeromq.autoconfig.ZeroMqProperties properties;
     private final Map<String, CompletableFuture<Object>> pendingTasks = new ConcurrentHashMap<>();
     
     
-    public DistributedComputeService(ZeroMqTemplate zeroMqTemplate) {
+    public DistributedComputeService(ZeroMqTemplate zeroMqTemplate, com.example.zeromq.autoconfig.ZeroMqProperties properties) {
         this.zeroMqTemplate = zeroMqTemplate;
+        this.properties = properties;
     }
 
     @PostConstruct
     private void setupResultHandlers() {
         // Subscribe to compute results published by workers
-        zeroMqTemplate.subscribe("tcp://localhost:5590", "compute.result", ComputeResult.class, result -> {
+        zeroMqTemplate.subscribe(properties.getNamed().getComputeResultSubscribe(), "compute.result", ComputeResult.class, result -> {
             try {
                 CompletableFuture<Object> future = pendingTasks.remove(result.getTaskId());
                 if (future != null) {
@@ -64,7 +66,7 @@ public class DistributedComputeService {
                 .build();
 
         try {
-            zeroMqTemplate.push("tcp://*:5580", task);
+            zeroMqTemplate.push(properties.getNamed().getComputeMatrixPush(), task);
         } catch (Exception e) {
             pendingTasks.remove(taskId);
             resultFuture.completeExceptionally(e);
@@ -87,7 +89,7 @@ public class DistributedComputeService {
                 .build();
 
         try {
-            zeroMqTemplate.push("tcp://*:5581", task);
+            zeroMqTemplate.push(properties.getNamed().getComputeMlPush(), task);
         } catch (Exception e) {
             pendingTasks.remove(taskId);
             resultFuture.completeExceptionally(e);
