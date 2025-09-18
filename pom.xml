@@ -29,6 +29,7 @@
         <module>zeromq-compute</module>
         <module>zeromq-examples</module>
         <module>zeromq-spring-boot-starter</module>
+        <module>zeromq-docs</module>
     </modules>
 
     <properties>

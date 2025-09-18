@@ -1,0 +1,11 @@
+= Spring ZeroMQ Starter
+:doctype: book
+:icons: font
+:encoding: utf-8
+
+include::getting-started.adoc[]
+
+
+== Documentation
+
+This documentation module builds the project documentation using Asciidoctor. Run `mvn -pl zeromq-docs prepare-package` or `mvn -pl zeromq-docs package` to generate HTML docs under `target/generated-docs`. 

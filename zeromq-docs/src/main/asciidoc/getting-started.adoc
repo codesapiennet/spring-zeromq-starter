@@ -1,0 +1,22 @@
+== Getting Started
+
+This quick-start shows how to build and view the documentation and points to the main modules.
+
+=== Build docs
+
+To build the documentation locally:
+
+`mvn -pl zeromq-docs prepare-package`
+
+The generated HTML files will be available in:
+
+`zeromq-docs/target/generated-docs`
+
+=== Content
+
+- Overview of modules: `zeromq-core`, `zeromq-autoconfigure`, `zeromq-annotations`, `zeromq-compute`, `sample-app`
+- Configuration reference
+- Messaging patterns and examples
+- Security (CURVE) and key management
+
+For API reference, see `api-reference.adoc` (to be added). 
