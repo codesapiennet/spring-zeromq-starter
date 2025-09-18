@@ -13,6 +13,7 @@ Included examples:
 - `GpuComputeExample` - submits a compute task and waits for results
 - `DistributedMlExample` - submits ML inference tasks to worker queue
 - `ScientificComputeExample` - submits scientific tasks (FFT) to worker queue
+- `MicroservicesApiGateway` / `MicroservicesUserService` - simple inter-service REQ/REP demo
 
 To run examples, start the sample application which includes these components:
 
