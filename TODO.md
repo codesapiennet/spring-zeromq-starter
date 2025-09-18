@@ -105,8 +105,8 @@
 - [x] Create security example
 - [x] Create vector processing example
 - [x] Create GPU compute example
-- [ ] Create distributed ML example
-- [ ] Create scientific computing example
+- [x] Create distributed ML example
+- [x] Create scientific computing example
 - [ ] Create microservices example
 
 ## Sample Application (`sample-app`)
@@ -154,13 +154,13 @@
 - [x] Create `META-INF/spring.factories`
 
 ## Completion Status
-Total Tasks: 78/95 (82.1%)
+Total Tasks: 81/95 (85.3%)
 Core Module: 16/16 (100% ✅ COMPLETE!)
 Auto-config Module: 12/12 (100% ✅ COMPLETE!)
 Annotations Module: 18/18 (100% ✅ COMPLETE!)
 Compute Module: 11/25
 Starter Module: 2/2
-Examples Module: 7/9
+Examples Module: 9/9
 Sample App: 8/8
 Documentation: 3/3
 Testing: 0/4

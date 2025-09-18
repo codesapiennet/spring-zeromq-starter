@@ -9,6 +9,10 @@ Included examples:
 - `PushPullExample` - PUSH/PULL task distribution
 - `LocalComputeExample` - compute example (existing)
 - `SecurityExample` - shows conditional publish using CURVE/PLAIN based on properties
+- `VectorProcessingExample` - publishes and verifies BatchVector payloads
+- `GpuComputeExample` - submits a compute task and waits for results
+- `DistributedMlExample` - submits ML inference tasks to worker queue
+- `ScientificComputeExample` - submits scientific tasks (FFT) to worker queue
 
 To run examples, start the sample application which includes these components:
 
