@@ -185,11 +185,56 @@ public class ZeroMQAnnotationConfiguration implements ImportAware {
      */
     @Bean
     @ConditionalOnMissingBean
-    public ZeroMQErrorHandlerRegistry zeroMQErrorHandlerRegistry() {
+    public ZeroMQErrorHandlerRegistry zeroMQErrorHandlerRegistry(
+            @Autowired(required = false) ZeroMqTemplate template,
+            @Autowired(required = false) ZeroMQMessageListenerContainerFactory factory) {
+
         ZeroMQErrorHandlerRegistry registry = new ZeroMQErrorHandlerRegistry();
-        
+
+        // If a template is available, register a dead-letter sender and a simple message reprocessor
+        if (template != null) {
+            registry.registerDeadLetterSender((endpoint, message) -> {
+                try {
+                    // Use push for DLQ to avoid topic semantics; fall back to publish if push fails
+                    try {
+                        template.push(endpoint, message);
+                    } catch (Exception pushEx) {
+                        template.publish(endpoint, "dlq", message);
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to send DLQ message to {}: {}", endpoint, e.getMessage(), e);
+                }
+            });
+
+            registry.registerMessageReprocessor((context, delayMs) -> {
+                try {
+                    // Re-publish the message to the same endpoint/topic
+                    template.publish(context.getEndpoint(), context.getTopic(), context.getMessage());
+                } catch (Exception e) {
+                    log.error("Failed to reprocess message for {}: {}", context, e.getMessage(), e);
+                }
+            });
+        }
+
+        // If a container factory is available, register a subscriber stopper that will stop containers bound to the endpoint
+        if (factory != null) {
+            registry.registerSubscriberStopper((endpoint, reason) -> {
+                try {
+                    for (String id : factory.getContainerIds()) {
+                        ZeroMQMessageListenerContainerFactory.ZeroMQMessageListenerContainer c = factory.getContainer(id);
+                        if (c != null && endpoint != null && endpoint.equals(c.getEndpointAddress())) {
+                            log.info("Stopping container {} for endpoint {} due to error: {}", id, endpoint, reason);
+                            factory.removeContainer(id);
+                        }
+                    }
+                } catch (Exception e) {
+                    log.error("Subscriber stopper failed for endpoint {}: {}", endpoint, e.getMessage(), e);
+                }
+            });
+        }
+
         log.debug("Created ZeroMQ error handler registry");
-        
+
         return registry;
     }
 

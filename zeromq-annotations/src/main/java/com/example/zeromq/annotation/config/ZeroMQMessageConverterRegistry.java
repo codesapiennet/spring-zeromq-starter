@@ -108,16 +108,30 @@ public class ZeroMQMessageConverterRegistry {
      * @return a suitable converter or null if none found
      */
     public MessageConverter findConverter(Class<?> messageType) {
+        // Delegate to the Optional-returning lookup to centralize logic
+        return findConverterOptional(messageType).orElse(null);
+    }
+
+    /**
+     * Find a suitable converter for the given message type and return it as an Optional.
+     *
+     * @param messageType the message type to convert
+     * @return an Optional containing a suitable converter if present
+     */
+    public java.util.Optional<MessageConverter> findConverterOptional(Class<?> messageType) {
         if (messageType == null) {
-            return null;
+            return java.util.Optional.empty();
         }
-        
+
         // Check cache first
         MessageConverter cached = converterCache.get(messageType);
         if (cached != null) {
-            return cached;
+            // Structured-ish debug message (JSON-like) for observability without adding new deps
+            log.debug("{\"component\":\"ZeroMQMessageConverterRegistry\",\"event\":\"cacheHit\",\"messageType\":\"{}\",\"converter\":\"{}\"}",
+                    messageType.getSimpleName(), cached.getClass().getSimpleName());
+            return java.util.Optional.of(cached);
         }
-        
+
         // Find compatible converter
         MessageConverter found = null;
         synchronized (converters) {
@@ -128,17 +142,46 @@ public class ZeroMQMessageConverterRegistry {
                 }
             }
         }
-        
-        // Cache the result (including null results)
+
+        // Cache the result (only non-null converters)
         if (found != null) {
             converterCache.put(messageType, found);
-            log.trace("Found converter for {}: {}", messageType.getSimpleName(), 
-                     found.getClass().getSimpleName());
+            log.debug("{\"component\":\"ZeroMQMessageConverterRegistry\",\"event\":\"foundConverter\",\"messageType\":\"{}\",\"converter\":\"{}\"}",
+                     messageType.getSimpleName(), found.getClass().getSimpleName());
+            return java.util.Optional.of(found);
         } else {
-            log.trace("No converter found for message type: {}", messageType.getSimpleName());
+            // Provide actionable diagnostic information in the log so operators can respond.
+            String available = getConverters().stream()
+                    .map(c -> c.getClass().getSimpleName())
+                    .reduce((a, b) -> a + "," + b)
+                    .orElse("none");
+
+            log.debug("{\"component\":\"ZeroMQMessageConverterRegistry\",\"event\":\"converterNotFound\",\"messageType\":\"{}\",\"availableConverters\":\"{}\"}",
+                    messageType.getSimpleName(), available);
+            return java.util.Optional.empty();
         }
-        
-        return found;
+    }
+
+    /**
+     * Return a converter for the given type or throw an informative exception if none available.
+     *
+     * @param messageType the message type to convert
+     * @return a suitable MessageConverter
+     * @throws IllegalStateException if no converter is registered for the given type
+     */
+    public MessageConverter getConverterOrThrow(Class<?> messageType) {
+        return findConverterOptional(messageType).orElseThrow(() -> {
+            String available = getConverters().stream()
+                    .map(c -> c.getClass().getName())
+                    .reduce((a, b) -> a + "," + b)
+                    .orElse("<none>");
+            String msg = "No message converter registered for type: " +
+                    (messageType == null ? "<null>" : messageType.getName()) +
+                    ". Registered converters: " + available + ". Register a MessageConverter implementation or add a default converter.";
+            log.error("{\"component\":\"ZeroMQMessageConverterRegistry\",\"event\":\"converterMissingError\",\"messageType\":\"{}\",\"registered\":\"{}\"}",
+                    messageType == null ? "<null>" : messageType.getSimpleName(), available);
+            return new IllegalStateException(msg);
+        });
     }
 
     /**

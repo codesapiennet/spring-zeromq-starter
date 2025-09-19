@@ -280,5 +280,19 @@ public class ZeroMQMessageListenerContainerFactory {
         public void setVectorProcessingEnabled(boolean enabled) { this.vectorProcessingEnabled = enabled; }
         public void setErrorHandling(EnableZeroMQ.ErrorHandling errorHandling) { this.errorHandling = errorHandling; }
         public void setMode(EnableZeroMQ.Mode mode) { this.mode = mode; }
+        
+        /**
+         * Get the configured endpoint address for this container.
+         *
+         * @return endpoint address or null if not available
+         */
+        public String getEndpointAddress() { return endpoint != null ? endpoint.getEndpoint() : null; }
+
+        /**
+         * Get a copy of configured topics for this container.
+         *
+         * @return list of topics
+         */
+        public java.util.List<String> getEndpointTopics() { return endpoint != null ? new java.util.ArrayList<>(endpoint.getTopics()) : java.util.List.of(); }
     }
 } 

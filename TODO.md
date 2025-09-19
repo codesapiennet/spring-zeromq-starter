@@ -17,6 +17,29 @@ Guiding principles for each task:
 ## Detailed per-file TODOs (actionable)
 
 - **zeromq-annotations**
+  - **Batch 1 (in-progress): Annotation processing & runtime wiring**
+    - Goals: complete annotation processors, make container factory produce runnable listener containers, ensure converters/error-handlers are pluggable, and add unit tests.
+    - Tasks:
+      - **ZeroMQPublisherAspect.java**
+        - Implement methods currently returning `null`. Ensure proper handling of return types, serialization via `MessageConverter`, metrics emission, and structured JSON logging.
+        - Add unit tests verifying serialization, error handling, and correct metric tags.
+      - **ZeroMQSubscriberProcessor.java**
+        - Replace `return null` stub with robust subscriber registration implementation that registers handlers as Spring beans and validates configuration at startup.
+        - Ensure non-blocking handler invocation and add unit tests for lifecycle (start/stop) and failure scenarios.
+      - **ZeroMQMessageConverterRegistry.java**
+        - Implement registry lookup methods to return `Optional<MessageConverter>` and add clear exceptions with actionable messages when converters are missing.
+        - Add unit tests for converter selection by content-type and by class mapping.
+      - **ZeroMQMessageListenerContainerFactory.java**
+        - Implement container creation logic: bind `ZeroMqTemplate`, register Micrometer metrics, honor HWM/backpressure settings, and support graceful shutdown.
+        - Add integration test that starts a container, publishes messages, and asserts metrics and shutdown behavior.
+      - **ZeroMQAnnotationPostProcessor.java**
+        - Extend processing to handle all annotation types used by the sample app and produce Spring beans for publishers/subscribers. Validate duplicate topic or handler configuration at startup and surface clear errors.
+      - **ZeroMQErrorHandlerRegistry.java**
+        - Implement subscriber stop and message reprocessing scheduling per TODO comments. Ensure handlers are pluggable, non-blocking, and schedulable. Add unit tests to verify requeue behavior and that duplicates are handled idempotently.
+    - Acceptance criteria:
+      - All public methods implemented (no `return null` stubs remain in this batch).
+      - Unit tests added under `src/test/java` covering the changed classes with >= 80% coverage for those classes.
+      - Structured JSON logs are present for lifecycle/error events added during the fixes.
   - `src/main/java/com/example/zeromq/annotation/processor/ZeroMQPublisherAspect.java`
     - Implement the methods currently returning `null` (found at scan locations). Ensure proper handling of return types, serialization via `MessageConverter`, and structured logging.
     - Implement custom error handler lookup (replace `// TODO: Implement custom error handler lookup`) and add unit tests verifying behavior when a custom handler is present and absent.

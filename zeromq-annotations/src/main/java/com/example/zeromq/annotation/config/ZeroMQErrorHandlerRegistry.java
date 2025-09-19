@@ -3,6 +3,7 @@ package com.example.zeromq.annotation.config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.DisposableBean;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
@@ -21,11 +22,24 @@ import java.util.Objects;
  * @since 0.1.0
  */
 @Component
-public class ZeroMQErrorHandlerRegistry {
+public class ZeroMQErrorHandlerRegistry implements DisposableBean {
 
     private static final Logger log = LoggerFactory.getLogger(ZeroMQErrorHandlerRegistry.class);
     
     private final ConcurrentHashMap<String, ErrorHandler> handlers = new ConcurrentHashMap<>();
+    
+    // Scheduler for retry and async tasks used by handlers
+    private final java.util.concurrent.ScheduledExecutorService scheduler =
+            java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "zmq-error-handler-scheduler");
+                t.setDaemon(true);
+                return t;
+            });
+
+    // Optional pluggable callbacks that allow the registry to stop subscribers and reprocess messages
+    private volatile java.util.function.BiConsumer<String, String> subscriberStopper; // (endpoint, reason)
+    private volatile java.util.function.BiConsumer<ErrorContext, Long> messageReprocessor; // (context, delayMs)
+    private volatile java.util.function.BiConsumer<String, Object> deadLetterSender; // (endpoint, message)
 
     /**
      * Register a custom error handler.
@@ -176,24 +190,54 @@ public class ZeroMQErrorHandlerRegistry {
         private final int maxRetries;
         private final long retryDelayMs;
         private final ConcurrentHashMap<String, Integer> retryCounters = new ConcurrentHashMap<>();
+        // Optional scheduler and reprocessor to actually schedule work
+        private final java.util.concurrent.ScheduledExecutorService scheduler;
+        private final java.util.function.BiConsumer<ErrorContext, Long> reprocessor;
 
         public RetryErrorHandler(int maxRetries, long retryDelayMs) {
+            this(maxRetries, retryDelayMs, null, null);
+        }
+
+        public RetryErrorHandler(int maxRetries, long retryDelayMs,
+                                 java.util.concurrent.ScheduledExecutorService scheduler,
+                                 java.util.function.BiConsumer<ErrorContext, Long> reprocessor) {
             this.maxRetries = maxRetries;
             this.retryDelayMs = retryDelayMs;
+            this.scheduler = scheduler;
+            this.reprocessor = reprocessor;
         }
 
         @Override
         public void handleError(ErrorContext context, Throwable error) {
             String key = context.getCorrelationId();
+            if (key == null) {
+                // Create a best-effort idempotency key if none provided
+                key = "auto-" + System.identityHashCode(context.getMessage()) + ":" + context.getTopic();
+            }
+
             int attempts = retryCounters.compute(key, (k, v) -> v == null ? 1 : v + 1);
 
             if (attempts <= maxRetries) {
                 log.warn("Message processing failed for {} (attempt {}/{}): {} - will retry in {}ms",
                         context, attempts, maxRetries, error.getMessage(), retryDelayMs);
 
-                // Schedule retry
-                // TODO: In a full implementation, this would schedule message reprocessing
-                
+                // Schedule retry using configured reprocessor if available
+                if (scheduler != null && reprocessor != null) {
+                    try {
+                        scheduler.schedule(() -> {
+                            try {
+                                reprocessor.accept(context, retryDelayMs);
+                            } catch (Exception ex) {
+                                log.error("Scheduled reprocessor failed for {}: {}", context, ex.getMessage(), ex);
+                            }
+                        }, retryDelayMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+                    } catch (Exception ex) {
+                        log.error("Failed to schedule retry for {}: {}", context, ex.getMessage(), ex);
+                    }
+                } else {
+                    log.warn("Retry requested but no message reprocessor or scheduler configured. Context={}", context);
+                }
+
             } else {
                 log.error("Message processing failed for {} after {} attempts: {}",
                         context, maxRetries, error.getMessage(), error);
@@ -219,24 +263,40 @@ public class ZeroMQErrorHandlerRegistry {
             log.warn("Message processing failed for {} - sending to dead letter queue: {}",
                     context, error.getMessage());
 
-            try {
-                // Create dead letter message with context
-                DeadLetterMessage dlqMessage = new DeadLetterMessage(
-                    context.getMessage(),
-                    context.getEndpoint(),
-                    context.getTopic(),
-                    error.getMessage(),
-                    context.getTimestamp(),
-                    context.getCorrelationId()
-                );
+            // Perform sending asynchronously to keep handlers non-blocking
+            java.util.concurrent.Executor exec = sender == null ? null : java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "zmq-dlq-sender"); t.setDaemon(true); return t;});
 
-                sender.accept(deadLetterEndpoint, dlqMessage);
+            Runnable sendTask = () -> {
+                try {
+                    DeadLetterMessage dlqMessage = new DeadLetterMessage(
+                        context.getMessage(),
+                        context.getEndpoint(),
+                        context.getTopic(),
+                        error.getMessage(),
+                        context.getTimestamp(),
+                        context.getCorrelationId()
+                    );
 
-                log.debug("Sent message to dead letter queue: {}", deadLetterEndpoint);
+                    sender.accept(deadLetterEndpoint, dlqMessage);
 
-            } catch (Exception dlqError) {
-                log.error("Failed to send message to dead letter queue {}: {}",
-                        deadLetterEndpoint, dlqError.getMessage(), dlqError);
+                    log.debug("Sent message to dead letter queue: {}", deadLetterEndpoint);
+
+                } catch (Exception dlqError) {
+                    log.error("Failed to send message to dead letter queue {}: {}",
+                            deadLetterEndpoint, dlqError.getMessage(), dlqError);
+                }
+            };
+
+            if (sender != null) {
+                if (exec != null) {
+                    exec.execute(sendTask);
+                } else {
+                    // fallback synchronous
+                    sendTask.run();
+                }
+            } else {
+                log.warn("No DLQ sender configured for endpoint {} - dropping message: {}", deadLetterEndpoint, context);
             }
         }
 
@@ -282,18 +342,80 @@ public class ZeroMQErrorHandlerRegistry {
             case LOG_AND_CONTINUE:
                 return LOG_AND_CONTINUE;
             case LOG_AND_STOP:
-                return LOG_AND_STOP;
+                // Return dynamic handler that invokes the registered subscriber stopper if present
+                return (context, error) -> {
+                    log.error("Message processing failed for {} - stopping subscriber: {}", context, error.getMessage(), error);
+                    if (subscriberStopper != null) {
+                        try {
+                            scheduler.execute(() -> {
+                                try {
+                                    subscriberStopper.accept(context.getEndpoint(), "Error: " + error.getMessage());
+                                } catch (Exception ex) {
+                                    log.error("Subscriber stopper failed for {}: {}", context, ex.getMessage(), ex);
+                                }
+                            });
+                        } catch (Exception ex) {
+                            log.error("Failed to schedule subscriber stop for {}: {}", context, ex.getMessage(), ex);
+                        }
+                    } else {
+                        log.warn("LOG_AND_STOP requested but no subscriber stopper registered. Context={}", context);
+                    }
+                };
             case IGNORE:
                 return IGNORE;
             case RETRY:
-                // default retry: 3 attempts, 1000ms delay
-                return new RetryErrorHandler(3, 1000);
+                // default retry: 3 attempts, 1000ms delay; attach scheduler and reprocessor if available
+                return new RetryErrorHandler(3, 1000, scheduler, messageReprocessor);
             case DEAD_LETTER:
-                // No sender configured by default - return handler that logs missing DLQ
-                return (context, error) -> log.warn("Dead-letter handling requested but no DLQ sender configured for {}", context);
+                // If a dead-letter sender is configured, return a handler that uses it, otherwise return a no-op with warning
+                if (deadLetterSender != null) {
+                    // choose a default dlq endpoint name
+                    String dlqEndpoint = "dlq";
+                    return new DeadLetterQueueErrorHandler(dlqEndpoint, deadLetterSender);
+                } else {
+                    return (context, error) -> log.warn("Dead-letter handling requested but no DLQ sender configured for {}", context);
+                }
             case CUSTOM:
             default:
                 return LOG_AND_CONTINUE;
         }
+    }
+
+    /**
+     * Register a subscriber stopper callback. The callback will be invoked with (endpoint, reason) when a handler requests stop.
+     */
+    public void registerSubscriberStopper(java.util.function.BiConsumer<String, String> stopper) {
+        this.subscriberStopper = stopper;
+        log.debug("Registered subscriber stopper");
+    }
+
+    /**
+     * Register a message reprocessor callback used by retry handlers. The callback will be invoked with (context, delayMs).
+     */
+    public void registerMessageReprocessor(java.util.function.BiConsumer<ErrorContext, Long> reprocessor) {
+        this.messageReprocessor = reprocessor;
+        log.debug("Registered message reprocessor");
+    }
+
+    /**
+     * Register a dead-letter sender used by dead-letter handlers. The callback will be invoked with (endpoint, message).
+     */
+    public void registerDeadLetterSender(java.util.function.BiConsumer<String, Object> sender) {
+        this.deadLetterSender = sender;
+        log.debug("Registered dead-letter sender");
+    }
+
+    @Override
+    public void destroy() {
+        try {
+            scheduler.shutdown();
+            if (!scheduler.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                scheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            scheduler.shutdownNow();
+        }
+        log.debug("ZeroMQErrorHandlerRegistry scheduler shut down");
     }
 } 
